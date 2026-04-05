@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "pgsa-env"
+version = "1.0.0"
+description = "PGSA — Physically-Grounded Scientific Architect OpenEnv Environment"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "Ayush Singh", email = "ayushsingh73920@gmail.com"}
+]
+keywords = ["openenv", "reinforcement-learning", "architecture", "physics", "llm"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+  "fastapi>=0.104.0",
+  "uvicorn[standard]>=0.24.0",
+  "pydantic>=2.0.0",
+  "httpx>=0.24.0",
+  "openai>=1.0.0",
+  "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "pytest-asyncio>=0.21",
+  "httpx>=0.24.0",
+]
+openenv = [
+  "openenv-core>=0.2.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/ayushsi42/pgsa"
+Repository = "https://github.com/ayushsi42/pgsa"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pgsa_env*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
