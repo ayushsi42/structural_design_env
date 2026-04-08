@@ -15,7 +15,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Dict, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 import os
 from pydantic import BaseModel
@@ -123,8 +123,8 @@ def list_tasks():
 
 
 @app.post("/reset", response_model=ResetResponse)
-def reset_env(req: Optional[ResetRequest] = None):
-    req = req or ResetRequest()
+def reset_env(body: Dict[str, Any] | None = Body(default=None)):
+    req = ResetRequest(**(body or {}))
     if req.task_id not in TASK_REGISTRY:
         raise HTTPException(
             status_code=400,
