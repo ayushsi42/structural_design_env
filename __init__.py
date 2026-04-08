@@ -1,8 +1,4 @@
 """
-PGSA Package — Root models, client, and exports.
+StructuralDesignEnv root package.
+See structural_design_env/ for the main environment.
 """
-
-from models import PGSAAction, PGSAObservation, PGSAState
-from client import PGSAEnv
-
-__all__ = ["PGSAAction", "PGSAObservation", "PGSAState", "PGSAEnv"]

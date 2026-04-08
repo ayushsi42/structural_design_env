@@ -1,4 +1,32 @@
-env_docs.js
-__pycache__
-ps_hackathon.md
+# Environment
 .env
+.venv
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Dev/local files
+uv.lock
+todo.md
+ps_hackathon.md
+env_docs.js
+run_debug.jsonl
+artifacts/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

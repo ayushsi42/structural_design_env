@@ -1,33 +1,31 @@
-# PGSA Environment — Docker Image
-# Runs on Python 3.11 slim, serves on port 7860 (HF Spaces standard)
+# StructuralDesignEnv — Docker Image
+# Serves on port 7860 (HF Spaces standard)
 
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install deps first (Docker cache layer)
+# Install build deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python deps first (cache layer)
 COPY pyproject.toml /app/pyproject.toml
-COPY pgsa_env/ /app/pgsa_env/
+RUN pip install --no-cache-dir ".[serve]" 2>/dev/null || pip install --no-cache-dir .
 
-RUN pip install --no-cache-dir .
-
-
-# Copy entire project (server + package root)
+# Copy full project
 COPY . /app
 
-# Expose HF Spaces port
+# Install package in editable mode so imports resolve
+RUN pip install --no-cache-dir -e .
+
 EXPOSE 7860
 
-# Set Python path so code can import from pgsa_env/ package
 ENV PYTHONPATH=/app
 
-# Health check
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7860/health')"
 
-# Expose the mandatory Hugging Face port
-EXPOSE 7860
-
-# Run FastAPI via uvicorn
-CMD ["uvicorn", "pgsa_env.server.app:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]
+# Run the server (server.py at repo root exports `app`)
+CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]

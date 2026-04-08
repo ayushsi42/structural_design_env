@@ -1,111 +1,37 @@
 spec_version: 1
-
-name: pgsa_env
+name: structural_design_env
 description: >
-  PGSA (Physically-Grounded Scientific Architect) — an OpenEnv environment
-  where LLM agents act as architects designing structurally sound, 
-  functionally complete buildings. Agents place structural elements,
-  probe material physics, annotate rooms, and optimize reward across
-  structural stability, airflow, lighting, and egress constraints.
-
+  StructuralDesignEnv — an OpenEnv environment where LLM agents design
+  structurally sound steel building frames. Agents place columns, beams,
+  and shear walls, then receive physics analysis results (utilization ratios,
+  deflections, drift) from the direct stiffness method. Eurocode 3 compliance
+  is checked at every step.
 tags:
-  - architecture
-  - physics
   - structural-engineering
-  - planning
+  - physics
+  - steel-frames
+  - eurocode
   - openenv
-
 tasks:
-  - id: stable_shelter
-    name: "Stable Shelter"
+  - id: task1_warehouse
+    name: "Column Grid Warehouse"
     difficulty: easy
-    curriculum_level: 1
-    description: >
-      Build a structurally stable single-room shelter on an 8×8×8 voxel grid.
-      Score = 50% structural stability + 50% room completion.
-    grader: grade_easy
-    max_steps: 500
-    budget: 200
-
-  - id: functional_office
-    name: "Functional Office"
+    max_steps: 25
+    description: Single-story 20×10m warehouse. No lateral loads. Score by validity + material efficiency.
+  - id: task2_office
+    name: "Multi-Story Office"
     difficulty: medium
-    curriculum_level: 2
-    description: >
-      Design a 2–3 room office building with proper door connectivity,
-      airflow through exterior doors, and lighting through windows.
-      Score weighted across: rooms(35%), connectivity(20%), airflow(15%),
-      lighting(15%), egress(10%), density(5%).
-    grader: grade_medium
-    max_steps: 500
-    budget: 1000
-
-  - id: material_detective
-    name: "Material Detective"
+    max_steps: 55
+    description: 3-story 20×20m office with wind and light seismic. Score by drift control + efficiency + torsional balance.
+  - id: task3_hospital
+    name: "Seismic Hospital"
     difficulty: hard
-    curriculum_level: 3
-    description: >
-      Build a 4–5 room complex with hidden material properties.
-      True yield strengths and elastic moduli are drawn from log-normal
-      distributions. Use PROBE_PHYSICS actions to infer material behavior
-      before committing to structural choices. Physics accuracy is scored.
-    grader: grade_hard
-    max_steps: 500
-    budget: 2000
-    probe_budget: 50
-
-app: pgsa_env.server.app:app
+    max_steps: 85
+    description: 3-story hospital in seismic Zone 3. Score by seismic drift + budget + redundancy + utilization.
+app: server.app:app
 port: 7860
 requirements: pyproject.toml
-
 runtime:
   type: docker
   dockerfile: Dockerfile
   build_context: "."
-
-observation_space:
-  type: dict
-  fields:
-    message:
-      type: string
-      description: Natural-language observation for LLM agents
-    task_description:
-      type: string
-      description: Full task specification (constant per episode)
-    constraint_status:
-      type: dict
-      description: Current functional constraint scores
-    reward_breakdown:
-      type: dict
-      description: Per-component reward values
-    budget_remaining:
-      type: integer
-    probe_budget_remaining:
-      type: integer
-    done:
-      type: boolean
-
-action_space:
-  type: dict
-  fields:
-    message:
-      type: string
-      description: >
-        JSON-encoded action with 'action_type' field.
-        Supported: PLACE_ELEMENT, REMOVE_ELEMENT, REPLACE_MATERIAL,
-        PLACE_BATCH, PROBE_PHYSICS, ANNOTATE_ROOM, QUERY_BELIEF, COMMIT_DESIGN
-
-reward:
-  range: [-1.0, 1.0]
-  type: continuous
-  description: >
-    Dense reward signal computed each step. Composed of:
-    structural (stability, connectivity), functional (rooms, airflow, lighting,
-    egress), physics accuracy (probe-based), cost penalty, and efficiency bonus.
-    Terminal reward = graded score [0.0, 1.0] on COMMIT_DESIGN.
-
-episodes:
-  termination_conditions:
-    - COMMIT_DESIGN action called
-    - Action budget (500 steps) exceeded
-    - Structure collapses (COLLAPSE classification)

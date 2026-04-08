@@ -1,18 +1,18 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "pgsa-env"
+name = "structural-design-env"
 version = "1.0.0"
-description = "PGSA — Physically-Grounded Scientific Architect OpenEnv Environment"
+description = "StructuralDesignEnv — Steel Frame OpenEnv Environment with Eurocode 3 physics"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
   {name = "Ayush Singh", email = "ayushsingh73920@gmail.com"}
 ]
-keywords = ["openenv", "reinforcement-learning", "architecture", "physics", "llm"]
+keywords = ["openenv", "reinforcement-learning", "structural-engineering", "eurocode", "physics", "llm"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
@@ -28,7 +28,13 @@ dependencies = [
   "httpx>=0.24.0",
   "openai>=1.0.0",
   "python-dotenv>=1.0.0",
+  "numpy>=1.24.0",
+  "scipy>=1.10.0",
+  "openenv-core>=0.2.0",
 ]
+
+[project.scripts]
+server = "server.app:main"
 
 [project.optional-dependencies]
 dev = [
@@ -41,12 +47,12 @@ openenv = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ayushsi42/pgsa"
-Repository = "https://github.com/ayushsi42/pgsa"
+Homepage = "https://github.com/ayushsi42/structural_design_env"
+Repository = "https://github.com/ayushsi42/structural_design_env"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pgsa_env*"]
+include = ["structural_design_env*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
