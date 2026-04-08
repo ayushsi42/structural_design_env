@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Structural Design Env - Interactive Demo</title>
+    <meta name="description" content="Interactive demo for StructuralDesignEnv">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --bg-color: #0f1115;
+            --panel-bg: rgba(25, 28, 36, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-main: #f3f4f6;
+            --text-dim: #9ca3af;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(225,39%,15%,1) 0, transparent 50%), 
+                radial-gradient(at 100% 100%, hsla(339,20%,12%,1) 0, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(15, 17, 21, 0.6);
+            backdrop-filter: blur(12px);
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(to right, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        select, button {
+            font-family: 'Inter', sans-serif;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select:focus, button:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        }
+
+        select option {
+            background: var(--bg-color);
+        }
+
+        button {
+            background: var(--accent);
+            border: none;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background: var(--accent-hover);
+        }
+        
+        button.secondary {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        button.secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .left-panel {
+            flex: 2;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+            position: relative;
+        }
+
+        .right-panel {
+            flex: 1;
+            padding: 2rem;
+            background: var(--panel-bg);
+            backdrop-filter: blur(10px);
+            overflow-y: auto;
+            border-left: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .tool-btn {
+            background: transparent;
+            color: var(--text-dim);
+            flex: 1;
+        }
+
+        .tool-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .svg-container {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #grid-svg {
+            cursor: crosshair;
+        }
+        
+        /* Tooltip style */
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 12px;
+            border-radius: 6px;
+            pointer-events: none;
+            font-size: 13px;
+            z-index: 100;
+            display: none;
+            color: #fff;
+            backdrop-filter: blur(4px);
+        }
+
+        .panel-section {
+            margin-bottom: 2rem;
+        }
+
+        .panel-section h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+
+        .status-valid {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-invalid {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .status-unconverged {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+        
+        .message-box {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 17, 21, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            color: white;
+            font-size: 1.2rem;
+            backdrop-filter: blur(4px);
+            display: none;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-left-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        th, td {
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        th {
+            color: var(--text-dim);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Structural Design Env</h1>
+        <div class="header-controls">
+            <select id="task-select">
+                <option value="task1_warehouse">Task 1: Warehouse</option>
+                <option value="task2_office">Task 2: Office</option>
+                <option value="task3_hospital">Task 3: Hospital</option>
+            </select>
+            <button id="btn-reset" class="secondary">New Episode</button>
+            <button id="btn-done">Done (Evaluate)</button>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <div id="loading" class="loading-overlay">
+                <div class="spinner"></div> Loading...
+            </div>
+            
+            <div class="toolbar">
+                <button class="tool-btn active" data-mode="place_column">Place Column</button>
+                <button class="tool-btn" data-mode="place_beam_x">Place Beam X (Horiz)</button>
+                <button class="tool-btn" data-mode="place_beam_y">Place Beam Y (Vert)</button>
+                <button class="tool-btn" data-mode="remove">Remove Element</button>
+            </div>
+            
+            <div class="toolbar" style="margin-top: -1rem; margin-bottom: 1.5rem;">
+                <label style="color: var(--text-dim); font-size: 0.9rem; align-self: center; margin-left: 1rem;">Section:</label>
+                <select id="col-section-select" style="margin-left: 0.5rem;">
+                    <option value="HEB140">HEB140</option>
+                    <option value="HEB160">HEB160</option>
+                    <option value="HEB200" selected>HEB200</option>
+                    <option value="HEB240">HEB240</option>
+                    <option value="HEB300">HEB300</option>
+                    <option value="HEB360">HEB360</option>
+                    <option value="HEB400">HEB400</option>
+                </select>
+                <select id="beam-section-select" style="margin-left: 0.5rem; display: none;">
+                    <option value="IPE200">IPE200</option>
+                    <option value="IPE240">IPE240</option>
+                    <option value="IPE300" selected>IPE300</option>
+                    <option value="IPE360">IPE360</option>
+                    <option value="IPE400">IPE400</option>
+                    <option value="IPE450">IPE450</option>
+                    <option value="IPE500">IPE500</option>
+                </select>
+            </div>
+
+            <div class="svg-container" id="svg-wrap">
+                <svg id="grid-svg" width="100%" height="100%">
+                    <!-- Generated via JS -->
+                </svg>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="panel-section">
+                <h3>Design Status</h3>
+                <div id="status-badge" class="status-badge status-unconverged">Waiting for layout...</div>
+                
+                <div class="stat-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-mass">0 kg</div>
+                        <div class="stat-label">Total Steel Mass</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-carbon">0 kg</div>
+                        <div class="stat-label">Embodied Carbon</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-drift">0 %</div>
+                        <div class="stat-label">Max Drift Ratio</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-deflection">0 mm</div>
+                        <div class="stat-label">Max Deflection</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3>Utilization Hotspots</h3>
+                <table id="hotspot-table">
+                    <thead>
+                        <tr>
+                            <th>Element</th>
+                            <th>UR Bending</th>
+                            <th>UR Shear</th>
+                            <th>UR Axial</th>
+                        </tr>
+                    </thead>
+                    <tbody id="hotspot-tbody">
+                        <tr><td colspan="4" style="text-align:center; color: var(--text-dim)">No data</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="panel-section">
+                <h3>Environment Message</h3>
+                <div class="message-box" id="env-message">Initialize an episode to start.</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="tooltip" class="tooltip"></div>
+
+    <script>
+        let sessionId = null;
+        let currentMode = 'place_column';
+        let currentState = null;
+        let cellSpacing = 40; // Pixels per grid cell
+        
+        const svg = document.getElementById('grid-svg');
+        const tooltip = document.getElementById('tooltip');
+        const loading = document.getElementById('loading');
+        
+        // Setup toolbar interactions
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentMode = e.target.dataset.mode;
+                
+                if(currentMode === 'place_column') {
+                    document.getElementById('col-section-select').style.display = 'block';
+                    document.getElementById('beam-section-select').style.display = 'none';
+                } else if(currentMode.includes('beam')) {
+                    document.getElementById('col-section-select').style.display = 'none';
+                    document.getElementById('beam-section-select').style.display = 'block';
+                } else {
+                    document.getElementById('col-section-select').style.display = 'none';
+                    document.getElementById('beam-section-select').style.display = 'none';
+                }
+            });
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', resetEnvironment);
+        document.getElementById('btn-done').addEventListener('click', finishEpisode);
+
+        async function setLoading(isLoading) {
+            loading.style.display = isLoading ? 'flex' : 'none';
+        }
+
+        async function resetEnvironment() {
+            setLoading(true);
+            const taskId = document.getElementById('task-select').value;
+            try {
+                const res = await fetch('/reset', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ task_id: taskId })
+                });
+                const data = await res.json();
+                sessionId = data.session_id;
+                currentState = data.observation;
+                renderUI();
+            } catch (err) {
+                console.error(err);
+                alert('Error resetting environment.');
+            }
+            setLoading(false);
+        }
+        
+        async function sendAction(actionData) {
+            if (!sessionId) return;
+            setLoading(true);
+            try {
+                const res = await fetch('/step', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        message: JSON.stringify(actionData)
+                    })
+                });
+                const data = await res.json();
+                currentState = data.observation;
+                
+                if(data.done) {
+                    alert(`Episode complete! Reward: ${data.reward}`);
+                }
+                
+                renderUI();
+            } catch (err) {
+                console.error(err);
+            }
+            setLoading(false);
+        }
+        
+        async function finishEpisode() {
+            if (!sessionId) return;
+            await sendAction({action_type: 'done'});
+        }
+
+        function getColorForUR(ur) {
+            if (ur === 0 || !ur) return '#6b7280'; // gray (unassembled/no load)
+            if (ur > 1.0) return '#ef4444'; // red (fail)
+            if (ur > 0.8) return '#f59e0b'; // orange (high)
+            return '#34d399'; // green (safe)
+        }
+        
+        function renderUI() {
+            if (!currentState) return;
+            
+            // 1. Update Physics Stats
+            const isUnconverged = currentState.message && currentState.message.includes("Not converged");
+            const isValid = currentState.is_structurally_valid;
+            
+            const badge = document.getElementById('status-badge');
+            if (isUnconverged) {
+                badge.className = 'status-badge status-unconverged';
+                badge.innerText = 'Not converged (Structurally incomplete)';
+            } else if (isValid) {
+                badge.className = 'status-badge status-valid';
+                badge.innerText = 'Safe & Valid';
+            } else {
+                badge.className = 'status-badge status-invalid';
+                badge.innerText = 'Code Violations Detected';
+            }
+            
+            document.getElementById('stat-mass').innerText = currentState.total_steel_mass_kg.toFixed(0) + ' kg';
+            document.getElementById('stat-carbon').innerText = currentState.carbon_kg.toFixed(0) + ' kg';
+            document.getElementById('stat-drift').innerText = (currentState.max_lateral_drift_ratio * 100).toFixed(3) + '%';
+            document.getElementById('stat-deflection').innerText = currentState.max_deflection_mm.toFixed(1) + ' mm';
+            document.getElementById('env-message').innerText = currentState.message || "Ready";
+            
+            // Render Hotspots Tab
+            const tbody = document.getElementById('hotspot-tbody');
+            tbody.innerHTML = '';
+            // We'll fake critical elements if state.critical_members is not robustly structured, 
+            // or we'll filter top URs from placed_elements
+            let elements = currentState.placed_elements || [];
+            elements = elements.filter(e => e.utilization_ratio > 0)
+                               .sort((a,b) => b.utilization_ratio - a.utilization_ratio)
+                               .slice(0, 5);
+                               
+            if (elements.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-dim)">No active load data</td></tr>';
+            } else {
+                elements.forEach(e => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${e.element_id}</td>
+                        <td><span style="color: ${getColorForUR(e.ur_bending)}">${e.ur_bending ? e.ur_bending.toFixed(2) : '-'}</span></td>
+                        <td><span style="color: ${getColorForUR(e.ur_shear)}">${e.ur_shear ? e.ur_shear.toFixed(2) : '-'}</span></td>
+                        <td><span style="color: ${getColorForUR(e.utilization_ratio)}">${e.utilization_ratio.toFixed(2)}</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            // 2. Render SVG Grid
+            renderGrid();
+        }
+
+        function renderGrid() {
+            svg.innerHTML = '';
+            if (!currentState) return;
+            
+            const w = currentState.grid_width;
+            const d = currentState.grid_depth;
+            
+            // Grid logic: x=column (0 to w), y=row (0 to d)
+            // Flip Y so that y=0 is at the bottom visually
+            
+            const svgW = w * cellSpacing + 80;
+            const svgH = d * cellSpacing + 80;
+            // Add viewBox to make it responsive
+            svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
+            
+            const offsetX = 40;
+            const offsetY = 40;
+            
+            const getX = (gx) => offsetX + gx * cellSpacing;
+            const getY = (gy) => offsetY + (d - gy) * cellSpacing;
+            
+            // Draw background grid
+            for(let x=0; x<=w; x++) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', getX(x));
+                line.setAttribute('y1', getY(0));
+                line.setAttribute('x2', getX(x));
+                line.setAttribute('y2', getY(d));
+                line.setAttribute('stroke', 'rgba(255,255,255,0.05)');
+                line.setAttribute('stroke-width', '1');
+                svg.appendChild(line);
+            }
+            for(let y=0; y<=d; y++) {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', getX(0));
+                line.setAttribute('y1', getY(y));
+                line.setAttribute('x2', getX(w));
+                line.setAttribute('y2', getY(y));
+                line.setAttribute('stroke', 'rgba(255,255,255,0.05)');
+                line.setAttribute('stroke-width', '1');
+                svg.appendChild(line);
+            }
+            
+            // Clickable areas (invisible rects centered on nodes and spanning edges)
+            for(let x=0; x<=w; x++) {
+                for(let y=0; y<=d; y++) {
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', getX(x) - cellSpacing/2);
+                    rect.setAttribute('y', getY(y) - cellSpacing/2);
+                    rect.setAttribute('width', cellSpacing);
+                    rect.setAttribute('height', cellSpacing);
+                    rect.setAttribute('fill', 'transparent');
+                    rect.style.cursor = 'pointer';
+                    
+                    const handleHover = (e) => {
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = e.pageX + 15 + 'px';
+                        tooltip.style.top = e.pageY + 15 + 'px';
+                        tooltip.innerHTML = `Grid(${x}, ${y})`;
+                        rect.setAttribute('fill', 'rgba(255,255,255,0.05)');
+                    };
+                    const handleOut = () => {
+                        tooltip.style.display = 'none';
+                        rect.setAttribute('fill', 'transparent');
+                    };
+                    
+                    rect.addEventListener('mousemove', handleHover);
+                    rect.addEventListener('mouseleave', handleOut);
+                    rect.addEventListener('click', () => handleGridClick(x, y));
+                    
+                    svg.appendChild(rect);
+                }
+            }
+
+            // Draw placed structural elements
+            const elements = currentState.placed_elements || [];
+            
+            // Draw Beams first so they are behind columns
+            elements.filter(e => e.type === 'Beam').forEach(b => {
+                const parts = b.element_id.split('_'); 
+                // e.g. beam_0_0_5_0_0
+                if(parts.length >= 6) {
+                    const x1 = parseInt(parts[1]);
+                    const y1 = parseInt(parts[2]);
+                    const x2 = parseInt(parts[3]);
+                    const y2 = parseInt(parts[4]);
+                    // Only draw ground floor beams for demo
+                    const floor = parseInt(parts[5]);
+                    if(floor !== 0) return;
+                    
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', getX(x1));
+                    line.setAttribute('y1', getY(y1));
+                    line.setAttribute('x2', getX(x2));
+                    line.setAttribute('y2', getY(y2));
+                    line.setAttribute('stroke', getColorForUR(b.utilization_ratio));
+                    line.setAttribute('stroke-width', '6');
+                    line.setAttribute('stroke-linecap', 'round');
+                    
+                    line.addEventListener('mousemove', (e) => {
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = e.pageX + 15 + 'px';
+                        tooltip.style.top = e.pageY + 15 + 'px';
+                        tooltip.innerHTML = `${b.element_id}<br/>UR: ${b.utilization_ratio.toFixed(2)}`;
+                    });
+                    line.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+                    line.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if(currentMode === 'remove') {
+                            sendAction({action_type: 'remove_element', element_id: b.element_id});
+                        }
+                    });
+                    
+                    svg.appendChild(line);
+                }
+            });
+
+            // Draw Columns
+            elements.filter(e => e.type === 'Column').forEach(c => {
+                const parts = c.element_id.split('_');
+                // col_x_y_f
+                if(parts.length >= 4) {
+                    const x = parseInt(parts[1]);
+                    const y = parseInt(parts[2]);
+                    const floor = parseInt(parts[3]);
+                    if(floor !== 0) return; // Only 2D ground view
+                    
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', getX(x));
+                    circle.setAttribute('cy', getY(y));
+                    circle.setAttribute('r', '8');
+                    circle.setAttribute('fill', getColorForUR(c.utilization_ratio));
+                    circle.setAttribute('stroke', 'rgba(255,255,255,0.8)');
+                    circle.setAttribute('stroke-width', '2');
+                    
+                    circle.addEventListener('mousemove', (e) => {
+                        tooltip.style.display = 'block';
+                        tooltip.style.left = e.pageX + 15 + 'px';
+                        tooltip.style.top = e.pageY + 15 + 'px';
+                        tooltip.innerHTML = `${c.element_id} [${c.section}]<br/>UR: ${c.utilization_ratio.toFixed(2)}`;
+                    });
+                    circle.addEventListener('mouseleave', () => tooltip.style.display = 'none');
+                    circle.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if(currentMode === 'remove') {
+                            sendAction({action_type: 'remove_element', element_id: c.element_id});
+                        }
+                    });
+                    
+                    svg.appendChild(circle);
+                }
+            });
+        }
+        
+        function handleGridClick(x, y) {
+            if(currentMode === 'place_column') {
+                const sec = document.getElementById('col-section-select').value;
+                sendAction({
+                    action_type: 'place_column',
+                    grid_x: x, grid_y: y, floor: 0, section: sec
+                });
+            } else if(currentMode === 'place_beam_x') {
+                const sec = document.getElementById('beam-section-select').value;
+                sendAction({
+                    action_type: 'place_beam',
+                    from_node_x: x, from_node_y: y,
+                    to_node_x: x+1, to_node_y: y,
+                    floor: 0, section: sec, orientation: 'x'
+                });
+            } else if(currentMode === 'place_beam_y') {
+                const sec = document.getElementById('beam-section-select').value;
+                sendAction({
+                    action_type: 'place_beam',
+                    from_node_x: x, from_node_y: y,
+                    to_node_x: x, to_node_y: y+1,
+                    floor: 0, section: sec, orientation: 'y'
+                });
+            }
+        }
+        
+        // Initial load
+        resetEnvironment();
+    </script>
+</body>
+</html>
