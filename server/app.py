@@ -132,7 +132,8 @@ def list_tasks():
 
 
 @app.post("/reset", response_model=ResetResponse)
-def reset_env(req: ResetRequest):
+def reset_env(req: Optional[ResetRequest] = None):
+    req = req or ResetRequest()
     if req.task_id not in TASK_REGISTRY:
         raise HTTPException(
             status_code=400,

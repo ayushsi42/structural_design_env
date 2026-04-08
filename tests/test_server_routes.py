@@ -31,3 +31,12 @@ def test_tasks_endpoint_still_lists_registry():
     payload = response.json()
     task_ids = {task["id"] for task in payload["tasks"]}
     assert {"task1_warehouse", "task2_office", "task3_hospital"} <= task_ids
+
+
+def test_reset_accepts_empty_body():
+    response = client.post("/reset")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "session_id" in payload
+    assert "observation" in payload

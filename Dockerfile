@@ -10,14 +10,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps first (cache layer)
-COPY pyproject.toml /app/pyproject.toml
-RUN pip install --no-cache-dir ".[serve]" 2>/dev/null || pip install --no-cache-dir .
-
-# Copy full project
+# Copy full project first so packaging metadata (README, modules) is available
 COPY . /app
 
-# Install package in editable mode so imports resolve
+# Install package so imports resolve
 RUN pip install --no-cache-dir -e .
 
 EXPOSE 7860

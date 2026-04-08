@@ -12,7 +12,8 @@ Required environment variables:
 
 Optional:
     TASK_ID       — task1_warehouse | task2_office | task3_hospital (default: task1_warehouse)
-    SPACE_URL     — URL of the running OpenEnv server (default: http://localhost:7860)
+    SERVER_URL    — URL of the running OpenEnv server (default: http://localhost:7860)
+                    (SPACE_URL is also accepted for backward compatibility)
 """
 
 from __future__ import annotations
@@ -25,7 +26,10 @@ import textwrap
 from typing import List, Optional
 
 import httpx
+from dotenv import load_dotenv
 from openai import OpenAI
+
+load_dotenv()
 
 # --------------------------------------------------------------------------
 # Hackathon-required env vars (exact spec: only API_BASE_URL and MODEL_NAME have defaults)
@@ -39,7 +43,7 @@ LOCAL_IMAGE_NAME: Optional[str] = os.getenv("LOCAL_IMAGE_NAME")  # optional, for
 # Optional config
 # --------------------------------------------------------------------------
 TASK_ID: str = os.getenv("TASK_ID", "task1_warehouse")
-SPACE_URL: str = os.getenv("SPACE_URL", "http://localhost:7860")
+SPACE_URL: str = os.getenv("SERVER_URL") or os.getenv("SPACE_URL", "http://localhost:7860")
 TEMPERATURE: float = 0.0
 MAX_TOKENS: int = 4096  # Qwen3.5 needs extra tokens for thinking before JSON
 
@@ -112,7 +116,10 @@ def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> No
 # LLM helper
 # --------------------------------------------------------------------------
 
-client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+def _build_client() -> OpenAI:
+    if not HF_TOKEN:
+        raise RuntimeError("HF_TOKEN is required")
+    return OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
 
 
 def build_user_prompt(step: int, obs_message: str, last_reward: float, history: List[str]) -> str:
@@ -131,6 +138,7 @@ def build_user_prompt(step: int, obs_message: str, last_reward: float, history: 
 def get_model_action(step: int, obs_message: str, last_reward: float, history: List[str]) -> str:
     user_prompt = build_user_prompt(step, obs_message, last_reward, history)
     try:
+        client = _build_client()
         completion = client.chat.completions.create(
             model=MODEL_NAME,
             messages=[
