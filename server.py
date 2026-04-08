@@ -16,6 +16,8 @@ import uuid
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
+import os
 from pydantic import BaseModel
 
 from structural_design_env.env import StructuralDesignEnv
@@ -91,6 +93,16 @@ class StepResponse(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok", "env": "StructuralDesignEnv", "version": "1.0.0"}
+
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/demo", response_class=HTMLResponse)
+def serve_demo():
+    demo_path = os.path.join(os.path.dirname(__file__), "demo.html")
+    if os.path.exists(demo_path):
+        with open(demo_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return "demo.html not found."
 
 
 @app.get("/tasks")
