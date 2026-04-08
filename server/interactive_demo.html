@@ -1,756 +1,2223 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Structural Design Env - Interactive Demo</title>
-    <meta name="description" content="Interactive demo for StructuralDesignEnv">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StructuralDesignEnv Interactive Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07131d;
+      --bg-soft: #0d1d29;
+      --panel: rgba(13, 29, 41, 0.92);
+      --panel-strong: rgba(18, 38, 52, 0.96);
+      --line: rgba(255, 255, 255, 0.1);
+      --line-strong: rgba(255, 255, 255, 0.18);
+      --text: #f4efe6;
+      --muted: #98acb8;
+      --accent: #e9a24f;
+      --accent-soft: rgba(233, 162, 79, 0.16);
+      --secondary: #68c3b3;
+      --secondary-soft: rgba(104, 195, 179, 0.16);
+      --good: #74c77b;
+      --warn: #f2c462;
+      --danger: #ef6b5b;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+      --radius: 22px;
+      --radius-sm: 14px;
+      --heading-font: Georgia, "Times New Roman", serif;
+      --body-font: "Avenir Next", "Trebuchet MS", sans-serif;
+      --mono-font: "SFMono-Regular", "Consolas", monospace;
+    }
 
-        :root {
-            --bg-color: #0f1115;
-            --panel-bg: rgba(25, 28, 36, 0.7);
-            --border-color: rgba(255, 255, 255, 0.1);
-            --text-main: #f3f4f6;
-            --text-dim: #9ca3af;
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
-            --success: #10b981;
-            --error: #ef4444;
-            --warning: #f59e0b;
-        }
+    * {
+      box-sizing: border-box;
+    }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+    html {
+      scroll-behavior: smooth;
+    }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
-                radial-gradient(at 100% 0%, hsla(225,39%,15%,1) 0, transparent 50%), 
-                radial-gradient(at 100% 100%, hsla(339,20%,12%,1) 0, transparent 50%);
-            background-attachment: fixed;
-            color: var(--text-main);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-        }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--body-font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(104, 195, 179, 0.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(233, 162, 79, 0.18), transparent 24%),
+        linear-gradient(180deg, #08131d 0%, #091925 45%, #07131d 100%);
+    }
 
-        header {
-            padding: 1.5rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border-color);
-            background: rgba(15, 17, 21, 0.6);
-            backdrop-filter: blur(12px);
-            z-index: 10;
-        }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.4), transparent 88%);
+    }
 
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            background: linear-gradient(to right, #60a5fa, #a78bfa);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 0;
-        }
+    a {
+      color: inherit;
+    }
 
-        .header-controls {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
+    button,
+    select {
+      font: inherit;
+    }
 
-        select, button {
-            font-family: 'Inter', sans-serif;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--border-color);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.9rem;
-            outline: none;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+    .page-shell {
+      width: min(1500px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 28px 0 36px;
+    }
 
-        select:focus, button:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
-        }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.9fr);
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
 
-        select option {
-            background: var(--bg-color);
-        }
+    .hero-copy,
+    .hero-card,
+    .panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
 
-        button {
-            background: var(--accent);
-            border: none;
-            font-weight: 500;
-        }
+    .hero-copy {
+      padding: 32px;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(233, 162, 79, 0.14), transparent 36%),
+        radial-gradient(circle at 100% 30%, rgba(104, 195, 179, 0.16), transparent 34%),
+        linear-gradient(180deg, rgba(13, 29, 41, 0.98), rgba(9, 21, 31, 0.94));
+    }
 
-        button:hover {
-            background: var(--accent-hover);
-        }
-        
-        button.secondary {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        button.secondary:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
+    .hero-card {
+      padding: 26px;
+      background:
+        linear-gradient(180deg, rgba(14, 31, 44, 0.98), rgba(11, 24, 34, 0.95));
+    }
 
-        .main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
+    .eyebrow,
+    .section-label {
+      margin: 0 0 10px;
+      color: var(--secondary);
+      font-size: 0.77rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
 
-        .left-panel {
-            flex: 2;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid var(--border-color);
-            position: relative;
-        }
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      font-family: var(--heading-font);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
 
-        .right-panel {
-            flex: 1;
-            padding: 2rem;
-            background: var(--panel-bg);
-            backdrop-filter: blur(10px);
-            overflow-y: auto;
-            border-left: 1px solid rgba(255,255,255,0.05);
-        }
+    h1 {
+      max-width: 12ch;
+      font-size: clamp(2.8rem, 5vw, 4.8rem);
+      line-height: 0.95;
+    }
 
-        .toolbar {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1.5rem;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 0.5rem;
-            border-radius: 0.75rem;
-            border: 1px solid var(--border-color);
-        }
+    h2 {
+      font-size: 1.65rem;
+      line-height: 1.05;
+    }
 
-        .tool-btn {
-            background: transparent;
-            color: var(--text-dim);
-            flex: 1;
-        }
+    p {
+      margin: 0;
+      line-height: 1.55;
+    }
 
-        .tool-btn.active {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--text-main);
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.1);
-        }
+    .lede {
+      max-width: 58ch;
+      margin-top: 18px;
+      font-size: 1.06rem;
+      color: var(--muted);
+    }
 
-        .svg-container {
-            flex: 1;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 1rem;
-            border: 1px solid var(--border-color);
-            position: relative;
-            overflow: auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        #grid-svg {
-            cursor: crosshair;
-        }
-        
-        /* Tooltip style */
-        .tooltip {
-            position: absolute;
-            background: rgba(0,0,0,0.8);
-            border: 1px solid rgba(255,255,255,0.1);
-            padding: 8px 12px;
-            border-radius: 6px;
-            pointer-events: none;
-            font-size: 13px;
-            z-index: 100;
-            display: none;
-            color: #fff;
-            backdrop-filter: blur(4px);
-        }
+    .hero-actions,
+    .top-meta,
+    .mode-strip,
+    .control-grid,
+    .selection-actions,
+    .legend,
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
 
-        .panel-section {
-            margin-bottom: 2rem;
-        }
+    .hero-actions {
+      margin-top: 24px;
+    }
 
-        .panel-section h3 {
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-dim);
-            margin-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
-        }
+    .top-meta {
+      margin-top: 26px;
+      gap: 14px;
+    }
 
-        .stat-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-        }
+    .hero-stat {
+      min-width: 140px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.03);
+    }
 
-        .stat-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            border-radius: 0.75rem;
-            padding: 1rem;
-            transition: transform 0.2s;
-        }
+    .hero-stat-label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
 
-        .stat-card:hover {
-            transform: translateY(-2px);
-            background: rgba(255, 255, 255, 0.05);
-        }
+    .hero-stat-value {
+      font-size: 1rem;
+      font-weight: 700;
+    }
 
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-        }
+    .btn,
+    .mode-button,
+    .task-card,
+    .member-row {
+      transition:
+        transform 160ms ease,
+        border-color 160ms ease,
+        background 160ms ease,
+        color 160ms ease,
+        box-shadow 160ms ease;
+    }
 
-        .stat-label {
-            font-size: 0.8rem;
-            color: var(--text-dim);
-        }
+    .btn,
+    .mode-button,
+    .selection-actions button,
+    .footer-links a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--text);
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+    }
 
-        .status-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            margin-bottom: 1rem;
-        }
+    .btn:hover,
+    .mode-button:hover,
+    .selection-actions button:hover,
+    .footer-links a:hover,
+    .task-card:hover,
+    .member-row:hover {
+      transform: translateY(-1px);
+      border-color: var(--line-strong);
+      background: rgba(255, 255, 255, 0.06);
+    }
 
-        .status-valid {
-            background: rgba(16, 185, 129, 0.2);
-            color: #34d399;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
+    .btn.primary,
+    .selection-actions button.primary {
+      background: linear-gradient(135deg, rgba(233, 162, 79, 0.96), rgba(239, 107, 91, 0.92));
+      color: #1a0f07;
+      border-color: transparent;
+      font-weight: 700;
+    }
 
-        .status-invalid {
-            background: rgba(239, 68, 68, 0.2);
-            color: #f87171;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
+    .btn.secondary {
+      background: rgba(104, 195, 179, 0.1);
+      color: #d8fbf4;
+    }
 
-        .status-unconverged {
-            background: rgba(245, 158, 11, 0.2);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.3);
-        }
-        
-        .message-box {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 0.5rem;
-            padding: 1rem;
-            font-family: monospace;
-            font-size: 0.85rem;
-            color: var(--text-dim);
-            white-space: pre-wrap;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .loading-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 17, 21, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 50;
-            color: white;
-            font-size: 1.2rem;
-            backdrop-filter: blur(4px);
-            display: none;
-        }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255,255,255,0.1);
-            border-left-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 15px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+    .btn:disabled,
+    .mode-button:disabled,
+    .selection-actions button:disabled,
+    select:disabled {
+      opacity: 0.46;
+      cursor: not-allowed;
+      transform: none;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.85rem;
-        }
-        th, td {
-            text-align: left;
-            padding: 0.5rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        th {
-            color: var(--text-dim);
-            font-weight: 500;
-        }
-    </style>
+    .hero-card p {
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    .task-cards {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .task-card {
+      width: 100%;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.03);
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .task-card.active {
+      border-color: rgba(233, 162, 79, 0.6);
+      background: var(--accent-soft);
+      box-shadow: inset 0 0 0 1px rgba(233, 162, 79, 0.18);
+    }
+
+    .task-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .task-pill,
+    .status-pill,
+    .floor-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+    }
+
+    .task-pill.easy,
+    .status-pill.good {
+      color: #daf5dd;
+      background: rgba(116, 199, 123, 0.16);
+      border-color: rgba(116, 199, 123, 0.28);
+    }
+
+    .task-pill.medium,
+    .status-pill.warn {
+      color: #fff3cc;
+      background: rgba(242, 196, 98, 0.16);
+      border-color: rgba(242, 196, 98, 0.28);
+    }
+
+    .task-pill.hard,
+    .status-pill.danger {
+      color: #ffd8d3;
+      background: rgba(239, 107, 91, 0.16);
+      border-color: rgba(239, 107, 91, 0.28);
+    }
+
+    .status-pill.idle {
+      color: var(--muted);
+    }
+
+    .task-card-meta {
+      margin-top: 10px;
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(360px, 0.88fr);
+      gap: 24px;
+    }
+
+    .panel {
+      padding: 24px;
+      background:
+        linear-gradient(180deg, rgba(13, 29, 41, 0.98), rgba(10, 22, 31, 0.94));
+    }
+
+    .panel + .panel {
+      margin-top: 18px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .session-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--muted);
+      font-size: 0.84rem;
+      max-width: 100%;
+    }
+
+    .session-pill code,
+    .meta-row code {
+      overflow-wrap: anywhere;
+      font-family: var(--mono-font);
+      color: #fbd8ae;
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    label.control {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    select {
+      width: 100%;
+      min-height: 46px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+      outline: none;
+    }
+
+    .mode-strip {
+      margin-bottom: 14px;
+    }
+
+    .mode-button.active,
+    .floor-button.active {
+      border-color: rgba(104, 195, 179, 0.52);
+      color: #dcfffa;
+      background: var(--secondary-soft);
+      box-shadow: inset 0 0 0 1px rgba(104, 195, 179, 0.16);
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .control-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .notice {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      font-size: 0.92rem;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .notice.info {
+      background: rgba(104, 195, 179, 0.1);
+      border-color: rgba(104, 195, 179, 0.28);
+    }
+
+    .notice.warn {
+      background: rgba(242, 196, 98, 0.12);
+      border-color: rgba(242, 196, 98, 0.28);
+    }
+
+    .notice.error {
+      background: rgba(239, 107, 91, 0.12);
+      border-color: rgba(239, 107, 91, 0.3);
+    }
+
+    .floor-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .floor-button {
+      cursor: pointer;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      min-height: 420px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background:
+        linear-gradient(180deg, rgba(14, 29, 40, 0.94), rgba(9, 20, 29, 0.98));
+      overflow: hidden;
+    }
+
+    #gridSvg {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 420px;
+    }
+
+    .grid-empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 1rem;
+      background: linear-gradient(180deg, rgba(7, 19, 29, 0.24), rgba(7, 19, 29, 0.7));
+    }
+
+    .legend {
+      align-items: center;
+      gap: 10px 14px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .legend-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .metric {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .metric-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font-size: 1.12rem;
+      font-weight: 700;
+    }
+
+    .summary-copy {
+      padding: 14px 16px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
+    .meta-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .meta-row:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .meta-row strong {
+      color: var(--text);
+      text-align: right;
+      max-width: 68%;
+      overflow-wrap: anywhere;
+    }
+
+    .selected-card {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      min-height: 158px;
+    }
+
+    .selected-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .selected-field {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .selected-field span {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .selected-field strong {
+      font-size: 0.96rem;
+    }
+
+    .selection-actions {
+      margin-top: 14px;
+    }
+
+    pre.code-box {
+      margin: 14px 0 0;
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: rgba(4, 11, 17, 0.72);
+      color: #d8e9f0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--mono-font);
+      font-size: 0.86rem;
+      line-height: 1.55;
+      min-height: 78px;
+    }
+
+    .impact-box {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--muted);
+      font-size: 0.9rem;
+      min-height: 54px;
+    }
+
+    .member-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .member-row {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      color: inherit;
+      background: rgba(255, 255, 255, 0.03);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .member-row.is-selected {
+      border-color: rgba(233, 162, 79, 0.54);
+      background: var(--accent-soft);
+      box-shadow: inset 0 0 0 1px rgba(233, 162, 79, 0.18);
+    }
+
+    .member-copy {
+      min-width: 0;
+    }
+
+    .member-title {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .member-subtitle {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .member-ur {
+      min-width: 78px;
+      text-align: right;
+      font-weight: 700;
+    }
+
+    .server-message {
+      min-height: 180px;
+      margin: 0;
+    }
+
+    .empty-copy {
+      color: var(--muted);
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+    }
+
+    .ur-good {
+      color: var(--good);
+    }
+
+    .ur-warn {
+      color: var(--warn);
+    }
+
+    .ur-danger {
+      color: var(--danger);
+    }
+
+    footer.panel {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--muted);
+    }
+
+    .footer-links a {
+      min-height: 40px;
+      border-radius: 12px;
+    }
+
+    @media (max-width: 1180px) {
+      .hero,
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 860px) {
+      .page-shell {
+        width: min(100vw - 20px, 100%);
+        padding-top: 18px;
+      }
+
+      .hero-copy,
+      .hero-card,
+      .panel {
+        padding: 18px;
+      }
+
+      .toolbar,
+      .control-grid,
+      .metric-grid,
+      .selected-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-head,
+      footer.panel,
+      .meta-row {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .meta-row strong {
+        max-width: 100%;
+        text-align: left;
+      }
+    }
+  </style>
 </head>
 <body>
-
-    <header>
-        <h1>Structural Design Env</h1>
-        <div class="header-controls">
-            <select id="task-select">
-                <option value="task1_warehouse">Task 1: Warehouse</option>
-                <option value="task2_office">Task 2: Office</option>
-                <option value="task3_hospital">Task 3: Hospital</option>
-            </select>
-            <button id="btn-reset" class="secondary">New Episode</button>
-            <button id="btn-done">Done (Evaluate)</button>
+  <div class="page-shell">
+    <header class="hero">
+      <section class="hero-copy">
+        <p class="eyebrow">OpenEnv / Hugging Face Docker Space</p>
+        <h1>Design a steel frame live in the browser.</h1>
+        <p class="lede">
+          This Space now includes a real interactive simulation. Start an episode, click the grid to place columns,
+          connect them with beams or shear walls, and watch the structural metrics update after every API-backed step.
+        </p>
+        <div class="hero-actions">
+          <button id="heroStartButton" class="btn primary" type="button" data-start-episode>New Episode</button>
+          <a class="btn secondary" href="/docs">API Docs</a>
+          <a class="btn secondary" href="/tasks">Tasks JSON</a>
+          <a class="btn secondary" href="/action_schema">Action Schema</a>
         </div>
+        <div class="top-meta">
+          <div class="hero-stat">
+            <span class="hero-stat-label">API</span>
+            <span class="hero-stat-value" id="apiStatus">Loading</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-label">Episode</span>
+            <span class="hero-stat-value" id="episodeStatus">Not started</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-label">Solver</span>
+            <span class="hero-stat-value" id="solverStatus">Idle</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="hero-card">
+        <p class="section-label">Live Tasks</p>
+        <h2>Pick a scenario and build directly on the site grid.</h2>
+        <p>
+          The task list below is loaded from the API, so the demo stays aligned with the current environment config.
+        </p>
+        <div class="task-cards" id="taskCards"></div>
+      </aside>
     </header>
 
-    <div class="main-container">
-        <div class="left-panel">
-            <div id="loading" class="loading-overlay">
-                <div class="spinner"></div> Loading...
-            </div>
-            
-            <div class="toolbar">
-                <button class="tool-btn active" data-mode="place_column">Place Column</button>
-                <button class="tool-btn" data-mode="place_beam_x">Place Beam X (Horiz)</button>
-                <button class="tool-btn" data-mode="place_beam_y">Place Beam Y (Vert)</button>
-                <button class="tool-btn" data-mode="remove">Remove Element</button>
-            </div>
-            
-            <div class="toolbar" style="margin-top: -1rem; margin-bottom: 1.5rem;">
-                <label style="color: var(--text-dim); font-size: 0.9rem; align-self: center; margin-left: 1rem;">Section:</label>
-                <select id="col-section-select" style="margin-left: 0.5rem;">
-                    <option value="HEB140">HEB140</option>
-                    <option value="HEB160">HEB160</option>
-                    <option value="HEB200" selected>HEB200</option>
-                    <option value="HEB240">HEB240</option>
-                    <option value="HEB300">HEB300</option>
-                    <option value="HEB360">HEB360</option>
-                    <option value="HEB400">HEB400</option>
-                </select>
-                <select id="beam-section-select" style="margin-left: 0.5rem; display: none;">
-                    <option value="IPE200">IPE200</option>
-                    <option value="IPE240">IPE240</option>
-                    <option value="IPE300" selected>IPE300</option>
-                    <option value="IPE360">IPE360</option>
-                    <option value="IPE400">IPE400</option>
-                    <option value="IPE450">IPE450</option>
-                    <option value="IPE500">IPE500</option>
-                </select>
-            </div>
-
-            <div class="svg-container" id="svg-wrap">
-                <svg id="grid-svg" width="100%" height="100%">
-                    <!-- Generated via JS -->
-                </svg>
-            </div>
+    <main class="workspace">
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-label">Interactive Simulation</p>
+            <h2>Site Grid</h2>
+          </div>
+          <div class="session-pill">Session <code id="sessionIdDisplay">not started</code></div>
         </div>
 
-        <div class="right-panel">
-            <div class="panel-section">
-                <h3>Design Status</h3>
-                <div id="status-badge" class="status-badge status-unconverged">Waiting for layout...</div>
-                
-                <div class="stat-grid">
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-mass">0 kg</div>
-                        <div class="stat-label">Total Steel Mass</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-carbon">0 kg</div>
-                        <div class="stat-label">Embodied Carbon</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-drift">0 %</div>
-                        <div class="stat-label">Max Drift Ratio</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-deflection">0 mm</div>
-                        <div class="stat-label">Max Deflection</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="panel-section">
-                <h3>Utilization Hotspots</h3>
-                <table id="hotspot-table">
-                    <thead>
-                        <tr>
-                            <th>Element</th>
-                            <th>UR Bending</th>
-                            <th>UR Shear</th>
-                            <th>UR Axial</th>
-                        </tr>
-                    </thead>
-                    <tbody id="hotspot-tbody">
-                        <tr><td colspan="4" style="text-align:center; color: var(--text-dim)">No data</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="panel-section">
-                <h3>Environment Message</h3>
-                <div class="message-box" id="env-message">Initialize an episode to start.</div>
-            </div>
+        <div class="toolbar">
+          <label class="control">
+            Task
+            <select id="taskSelect"></select>
+          </label>
+          <label class="control">
+            Floor
+            <div class="floor-strip" id="floorButtons"></div>
+          </label>
         </div>
-    </div>
-    
-    <div id="tooltip" class="tooltip"></div>
 
-    <script>
-        let sessionId = null;
-        let currentMode = 'place_column';
-        let currentState = null;
-        let cellSpacing = 40; // Pixels per grid cell
-        
-        const svg = document.getElementById('grid-svg');
-        const tooltip = document.getElementById('tooltip');
-        const loading = document.getElementById('loading');
-        
-        // Setup toolbar interactions
-        document.querySelectorAll('.tool-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                currentMode = e.target.dataset.mode;
-                
-                if(currentMode === 'place_column') {
-                    document.getElementById('col-section-select').style.display = 'block';
-                    document.getElementById('beam-section-select').style.display = 'none';
-                } else if(currentMode.includes('beam')) {
-                    document.getElementById('col-section-select').style.display = 'none';
-                    document.getElementById('beam-section-select').style.display = 'block';
-                } else {
-                    document.getElementById('col-section-select').style.display = 'none';
-                    document.getElementById('beam-section-select').style.display = 'none';
-                }
-            });
+        <div class="mode-strip">
+          <button id="modeInspect" class="mode-button" type="button">Inspect</button>
+          <button id="modeColumn" class="mode-button" type="button">Place Column</button>
+          <button id="modeBeam" class="mode-button" type="button">Place Beam</button>
+          <button id="modeWall" class="mode-button" type="button">Add Wall</button>
+        </div>
+
+        <div class="control-grid">
+          <label class="control">
+            Column section
+            <select id="columnSection"></select>
+          </label>
+          <label class="control">
+            Beam section
+            <select id="beamSection"></select>
+          </label>
+          <label class="control">
+            Wall thickness
+            <select id="wallThickness">
+              <option value="0.2">0.2 m</option>
+              <option value="0.3">0.3 m</option>
+            </select>
+          </label>
+          <div class="control">
+            Actions
+            <div class="control-actions">
+              <button id="workspaceStartButton" class="btn secondary" type="button" data-start-episode>New Episode</button>
+              <button id="doneButton" class="btn primary" type="button">Finish Design</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="notice info" id="noticeBar">Loading API metadata...</div>
+
+        <div class="canvas-wrap">
+          <svg id="gridSvg" viewBox="0 0 800 520" aria-label="Structural grid"></svg>
+          <div class="grid-empty-state" id="gridEmptyState">
+            Start a new episode to activate the interactive simulation.
+          </div>
+        </div>
+
+        <div class="legend">
+          <span class="legend-chip"><span class="legend-swatch" style="background:#74c77b"></span>UR &lt; 0.60</span>
+          <span class="legend-chip"><span class="legend-swatch" style="background:#f2c462"></span>0.60 to 1.00</span>
+          <span class="legend-chip"><span class="legend-swatch" style="background:#ef6b5b"></span>UR &gt;= 1.00</span>
+          <span class="legend-chip"><span class="legend-swatch" style="background:#68c3b3"></span>Selected member</span>
+          <span class="legend-chip"><span class="legend-swatch" style="background:#d6dbe1"></span>Column node</span>
+        </div>
+      </section>
+
+      <aside>
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-label">Physics</p>
+              <h2>Live Results</h2>
+            </div>
+            <span class="status-pill idle" id="statusBadge">Idle</span>
+          </div>
+
+          <div class="metric-grid">
+            <div class="metric">
+              <span class="metric-label">Validity</span>
+              <span class="metric-value" id="metricValidity">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Max UR</span>
+              <span class="metric-value" id="metricUR">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Drift Ratio</span>
+              <span class="metric-value" id="metricDrift">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Deflection</span>
+              <span class="metric-value" id="metricDeflection">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Steel Mass</span>
+              <span class="metric-value" id="metricMass">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Carbon</span>
+              <span class="metric-value" id="metricCarbon">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Frame Type</span>
+              <span class="metric-value" id="metricFrameType">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Last Reward</span>
+              <span class="metric-value" id="metricReward">-</span>
+            </div>
+            <div class="metric">
+              <span class="metric-label">Final Score</span>
+              <span class="metric-value" id="metricScore">-</span>
+            </div>
+          </div>
+
+          <div class="summary-copy" id="summaryMessage">
+            Episode-level feedback will appear here after the first action.
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-label">Episode</p>
+              <h2>Session Details</h2>
+            </div>
+          </div>
+
+          <div class="meta-list" id="episodeMeta"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-label">Selection</p>
+              <h2>Element Inspector</h2>
+            </div>
+          </div>
+
+          <div class="selected-card" id="selectedElementCard">
+            <div class="empty-copy">Click a rendered member in Inspect mode to inspect forces and run edits.</div>
+          </div>
+
+          <div class="selection-actions">
+            <button id="clearSelectionButton" type="button">Clear Selection</button>
+            <button id="upgradeButton" type="button">Upgrade</button>
+            <button id="downgradeButton" type="button">Downgrade</button>
+            <button id="removeButton" type="button">Remove</button>
+            <button id="whatIfButton" type="button">What-If Remove</button>
+          </div>
+
+          <pre class="code-box" id="forcesBox">No member selected.</pre>
+          <div class="impact-box" id="impactBox">Counterfactual impact will appear here.</div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-label">Critical Members</p>
+              <h2>Top Checks</h2>
+            </div>
+          </div>
+
+          <div class="member-list" id="criticalMembersList"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-label">Server Summary</p>
+              <h2>Observation Message</h2>
+            </div>
+          </div>
+
+          <pre class="code-box server-message" id="serverMessage">Reset the environment to see the backend summary.</pre>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="panel">
+      <p>
+        StructuralDesignEnv couples a live editing UI with the existing reset, step, query, and what-if endpoints so users can explore the environment directly inside the Space.
+      </p>
+      <div class="footer-links">
+        <a href="/demo">/demo</a>
+        <a href="/docs">/docs</a>
+        <a href="/health">/health</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const fallbackSections = {
+      columns: ["HEB140", "HEB160", "HEB200", "HEB240", "HEB300", "HEB360", "HEB400"],
+      beams: ["IPE200", "IPE240", "IPE300", "IPE360", "IPE400", "IPE450", "IPE500"]
+    };
+
+    const state = {
+      health: null,
+      schema: null,
+      tasks: [],
+      sessionId: null,
+      observation: null,
+      selectedFloor: 0,
+      selectedElementId: null,
+      selectedElementForces: null,
+      selectedElementImpact: null,
+      mode: "inspect",
+      pendingPoint: null,
+      busy: false,
+      busyLabel: "",
+      lastReward: null,
+      lastInfo: null,
+      episodeDone: false,
+      notice: { text: "Loading API metadata...", tone: "info" }
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    document.addEventListener("DOMContentLoaded", () => {
+      bindEvents();
+      bootstrap();
+    });
+
+    function bindEvents() {
+      document.querySelectorAll("[data-start-episode]").forEach((button) => {
+        button.addEventListener("click", () => {
+          if (!state.busy) {
+            startEpisode();
+          }
+        });
+      });
+
+      $("taskSelect").addEventListener("change", () => {
+        if (!state.observation) {
+          state.selectedFloor = 0;
+        }
+        renderAll();
+      });
+
+      $("modeInspect").addEventListener("click", () => setMode("inspect"));
+      $("modeColumn").addEventListener("click", () => setMode("column"));
+      $("modeBeam").addEventListener("click", () => setMode("beam"));
+      $("modeWall").addEventListener("click", () => setMode("wall"));
+
+      $("doneButton").addEventListener("click", () => {
+        if (!state.busy) {
+          finalizeEpisode();
+        }
+      });
+
+      $("clearSelectionButton").addEventListener("click", () => {
+        clearSelection();
+      });
+
+      $("upgradeButton").addEventListener("click", () => {
+        if (!state.busy) {
+          sendElementMutation("upgrade_section");
+        }
+      });
+
+      $("downgradeButton").addEventListener("click", () => {
+        if (!state.busy) {
+          sendElementMutation("downgrade_section");
+        }
+      });
+
+      $("removeButton").addEventListener("click", () => {
+        if (!state.busy) {
+          sendElementMutation("remove_element");
+        }
+      });
+
+      $("whatIfButton").addEventListener("click", () => {
+        if (!state.busy) {
+          runWhatIfRemove();
+        }
+      });
+    }
+
+    async function bootstrap() {
+      setBusy(true, "Loading");
+      try {
+        const [health, tasksResponse, schema] = await Promise.all([
+          api("/health"),
+          api("/tasks"),
+          api("/action_schema")
+        ]);
+
+        state.health = health;
+        state.tasks = Array.isArray(tasksResponse.tasks) ? tasksResponse.tasks : [];
+        state.schema = schema || {};
+        populateTaskSelect();
+        populateSectionSelects();
+        setNotice("The demo is ready. Start a new episode to begin placing members.", "info");
+      } catch (error) {
+        setNotice(error.message, "error");
+      } finally {
+        setBusy(false);
+        renderAll();
+      }
+    }
+
+    async function startEpisode() {
+      const taskId = selectedTaskId();
+      setBusy(true, "Resetting");
+      try {
+        const payload = await api("/reset", {
+          method: "POST",
+          body: JSON.stringify({ task_id: taskId })
         });
 
-        document.getElementById('btn-reset').addEventListener('click', resetEnvironment);
-        document.getElementById('btn-done').addEventListener('click', finishEpisode);
+        state.sessionId = payload.session_id;
+        state.lastReward = null;
+        state.lastInfo = null;
+        state.episodeDone = false;
+        state.selectedFloor = 0;
+        state.selectedElementId = null;
+        state.selectedElementForces = null;
+        state.selectedElementImpact = null;
+        state.pendingPoint = null;
+        applyObservation(payload.observation);
+        setMode("column");
+        setNotice("Episode ready. Click the grid to place columns on floor 0.", "info");
+      } catch (error) {
+        setNotice(error.message, "error");
+      } finally {
+        setBusy(false);
+        renderAll();
+      }
+    }
 
-        async function setLoading(isLoading) {
-            loading.style.display = isLoading ? 'flex' : 'none';
+    async function finalizeEpisode() {
+      if (!state.sessionId || !state.observation || state.episodeDone) {
+        return;
+      }
+      await sendAction({ action_type: "done" }, "Final grading");
+    }
+
+    async function sendElementMutation(actionType) {
+      const element = getSelectedElement();
+      if (!element || !state.sessionId || state.episodeDone) {
+        return;
+      }
+      await sendAction({ action_type: actionType, element_id: element.id }, "Updating section");
+    }
+
+    async function sendAction(action, busyLabel) {
+      if (!state.sessionId) {
+        setNotice("Start an episode before sending actions.", "warn");
+        renderAll();
+        return;
+      }
+
+      setBusy(true, busyLabel || "Sending action");
+      try {
+        const payload = await api("/step", {
+          method: "POST",
+          body: JSON.stringify({
+            session_id: state.sessionId,
+            message: JSON.stringify(action)
+          })
+        });
+
+        state.lastReward = typeof payload.reward === "number" ? payload.reward : null;
+        state.lastInfo = payload.info || {};
+        state.episodeDone = Boolean(payload.done);
+        state.pendingPoint = null;
+        applyObservation(payload.observation);
+
+        if (state.observation && state.observation.last_action_result === "INVALID") {
+          setNotice(state.observation.last_action_error || "The backend rejected that action.", "warn");
+        } else if (state.episodeDone && typeof state.lastInfo.graded_score === "number") {
+          setNotice("Episode finished. Final score: " + formatNumber(state.lastInfo.graded_score, 4), "info");
+        } else {
+          setNotice(actionSummary(action), "info");
         }
 
-        async function resetEnvironment() {
-            setLoading(true);
-            const taskId = document.getElementById('task-select').value;
-            try {
-                const res = await fetch('/reset', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ task_id: taskId })
-                });
-                const data = await res.json();
-                sessionId = data.session_id;
-                currentState = data.observation;
-                renderUI();
-            } catch (err) {
-                console.error(err);
-                alert('Error resetting environment.');
+        await refreshSelectedElementDetails();
+      } catch (error) {
+        setNotice(error.message, "error");
+      } finally {
+        setBusy(false);
+        renderAll();
+      }
+    }
+
+    async function runWhatIfRemove() {
+      const element = getSelectedElement();
+      if (!element || !state.sessionId) {
+        return;
+      }
+
+      setBusy(true, "Running what-if");
+      try {
+        state.selectedElementImpact = await api("/what_if_remove", {
+          method: "POST",
+          body: JSON.stringify({
+            session_id: state.sessionId,
+            element_id: element.id
+          })
+        });
+        setNotice("Counterfactual complete for " + element.id + ".", "info");
+      } catch (error) {
+        state.selectedElementImpact = { error: error.message };
+        setNotice(error.message, "warn");
+      } finally {
+        setBusy(false);
+        renderAll();
+      }
+    }
+
+    function applyObservation(observation) {
+      state.observation = observation || null;
+
+      if (state.observation) {
+        const availableFloors = Math.max(1, state.observation.n_floors || 1);
+        if (state.selectedFloor >= availableFloors) {
+          state.selectedFloor = availableFloors - 1;
+        }
+      } else {
+        state.selectedFloor = 0;
+      }
+
+      if (state.selectedElementId && !getSelectedElement()) {
+        state.selectedElementId = null;
+        state.selectedElementForces = null;
+        state.selectedElementImpact = null;
+      }
+    }
+
+    async function selectElement(elementId) {
+      if (!state.observation) {
+        return;
+      }
+
+      state.selectedElementId = elementId;
+      state.selectedElementForces = null;
+      state.selectedElementImpact = null;
+      renderAll();
+      await refreshSelectedElementDetails();
+    }
+
+    async function refreshSelectedElementDetails() {
+      const element = getSelectedElement();
+      if (!element || !state.sessionId) {
+        state.selectedElementForces = null;
+        return;
+      }
+
+      try {
+        state.selectedElementForces = await api(
+          "/query_forces?session_id=" + encodeURIComponent(state.sessionId) +
+          "&element_id=" + encodeURIComponent(element.id)
+        );
+      } catch (error) {
+        state.selectedElementForces = { error: error.message };
+      }
+      renderAll();
+    }
+
+    function clearSelection() {
+      state.selectedElementId = null;
+      state.selectedElementForces = null;
+      state.selectedElementImpact = null;
+      state.pendingPoint = null;
+      setNotice(modeHint(), "info");
+      renderAll();
+    }
+
+    function populateTaskSelect() {
+      const select = $("taskSelect");
+      const active = select.value || "task1_warehouse";
+      select.innerHTML = state.tasks.map((task) => (
+        "<option value=\"" + escapeHtml(task.id) + "\"" +
+        (task.id === active ? " selected" : "") + ">" +
+        escapeHtml(task.name) + " (" + escapeHtml(task.id) + ")" +
+        "</option>"
+      )).join("");
+
+      if (!select.value && state.tasks.length) {
+        select.value = state.tasks[0].id;
+      }
+    }
+
+    function populateSectionSelects() {
+      const schemaSections = state.schema && state.schema.sections ? state.schema.sections : fallbackSections;
+      populateSelectWithOptions($("columnSection"), schemaSections.columns || fallbackSections.columns);
+      populateSelectWithOptions($("beamSection"), schemaSections.beams || fallbackSections.beams);
+      $("columnSection").value = "HEB200";
+      $("beamSection").value = "IPE300";
+    }
+
+    function populateSelectWithOptions(select, options) {
+      select.innerHTML = options.map((value) => (
+        "<option value=\"" + escapeHtml(value) + "\">" + escapeHtml(value) + "</option>"
+      )).join("");
+    }
+
+    function selectedTaskId() {
+      return $("taskSelect").value || "task1_warehouse";
+    }
+
+    function currentTaskId() {
+      return state.observation ? state.observation.task_id : selectedTaskId();
+    }
+
+    function currentTaskMeta() {
+      return state.tasks.find((task) => task.id === currentTaskId()) || null;
+    }
+
+    function setMode(mode) {
+      state.mode = mode;
+      state.pendingPoint = null;
+      setNotice(modeHint(), "info");
+      renderAll();
+    }
+
+    function setBusy(isBusy, label) {
+      state.busy = isBusy;
+      state.busyLabel = label || "";
+    }
+
+    function setNotice(text, tone) {
+      state.notice = { text: text, tone: tone || "info" };
+    }
+
+    function renderAll() {
+      renderHeader();
+      renderTaskCards();
+      renderFloorButtons();
+      renderModeButtons();
+      renderNotice();
+      renderGrid();
+      renderMetrics();
+      renderEpisodeMeta();
+      renderSelectedElement();
+      renderCriticalMembers();
+      renderServerMessage();
+      refreshControlStates();
+    }
+
+    function renderHeader() {
+      const health = state.health;
+      $("apiStatus").textContent = health ? (health.status + " / v" + health.version) : "Unavailable";
+      $("episodeStatus").textContent = state.observation
+        ? ("Step " + state.observation.step_count + " / " + state.observation.max_steps)
+        : "Not started";
+      $("solverStatus").textContent = state.busy
+        ? state.busyLabel || "Working"
+        : solverLabel();
+      $("sessionIdDisplay").textContent = state.sessionId || "not started";
+    }
+
+    function renderTaskCards() {
+      const wrapper = $("taskCards");
+      if (!state.tasks.length) {
+        wrapper.innerHTML = "<div class=\"empty-copy\">No tasks available.</div>";
+        return;
+      }
+
+      const activeId = selectedTaskId();
+      wrapper.innerHTML = state.tasks.map((task) => {
+        const difficultyClass = difficultyTone(task.difficulty);
+        return (
+          "<button type=\"button\" class=\"task-card " + (task.id === activeId ? "active" : "") + "\" data-task-id=\"" + escapeHtml(task.id) + "\">" +
+            "<div class=\"task-card-head\">" +
+              "<strong>" + escapeHtml(task.name) + "</strong>" +
+              "<span class=\"task-pill " + difficultyClass + "\">" + escapeHtml(task.difficulty) + "</span>" +
+            "</div>" +
+            "<p>" + escapeHtml(task.description || "") + "</p>" +
+            "<div class=\"task-card-meta\">" +
+              escapeHtml(task.id) + " | " +
+              escapeHtml(String(task.n_floors)) + " floor(s) | " +
+              escapeHtml(String(task.max_steps)) + " steps" +
+            "</div>" +
+          "</button>"
+        );
+      }).join("");
+
+      wrapper.querySelectorAll("[data-task-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          if (state.busy) {
+            return;
+          }
+          $("taskSelect").value = button.getAttribute("data-task-id");
+          if (!state.observation) {
+            state.selectedFloor = 0;
+          }
+          renderAll();
+        });
+      });
+    }
+
+    function renderFloorButtons() {
+      const wrapper = $("floorButtons");
+      const floorCount = state.observation
+        ? Math.max(1, state.observation.n_floors || 1)
+        : Math.max(1, currentTaskMeta() ? currentTaskMeta().n_floors : 1);
+
+      if (state.selectedFloor >= floorCount) {
+        state.selectedFloor = floorCount - 1;
+      }
+
+      wrapper.innerHTML = Array.from({ length: floorCount }, (_, floor) => (
+        "<button type=\"button\" class=\"floor-button " + (floor === state.selectedFloor ? "active" : "") + "\" data-floor=\"" + floor + "\">" +
+          "Floor " + floor +
+        "</button>"
+      )).join("");
+
+      wrapper.querySelectorAll("[data-floor]").forEach((button) => {
+        button.addEventListener("click", () => {
+          state.selectedFloor = Number(button.getAttribute("data-floor"));
+          state.pendingPoint = null;
+          renderAll();
+        });
+      });
+    }
+
+    function renderModeButtons() {
+      const mapping = {
+        inspect: $("modeInspect"),
+        column: $("modeColumn"),
+        beam: $("modeBeam"),
+        wall: $("modeWall")
+      };
+
+      Object.entries(mapping).forEach(([mode, button]) => {
+        button.classList.toggle("active", state.mode === mode);
+      });
+    }
+
+    function renderNotice() {
+      const notice = $("noticeBar");
+      const tone = state.notice ? state.notice.tone : "info";
+      notice.className = "notice " + tone;
+      notice.textContent = state.busy ? (state.busyLabel + "...") : (state.notice ? state.notice.text : modeHint());
+    }
+
+    function renderGrid() {
+      const svg = $("gridSvg");
+      const emptyState = $("gridEmptyState");
+      svg.innerHTML = "";
+
+      if (!state.observation) {
+        emptyState.style.display = "flex";
+        return;
+      }
+
+      emptyState.style.display = "none";
+      const width = Math.max(1, Math.round(state.observation.site_width_m));
+      const depth = Math.max(1, Math.round(state.observation.site_depth_m));
+      const cell = Math.max(24, Math.floor(620 / Math.max(width, depth)));
+      const padding = 56;
+      const viewWidth = padding * 2 + width * cell;
+      const viewHeight = padding * 2 + depth * cell;
+
+      svg.setAttribute("viewBox", "0 0 " + viewWidth + " " + viewHeight);
+      svg.style.aspectRatio = viewWidth + " / " + viewHeight;
+
+      const centerX = (x) => padding + (x * cell) + (cell / 2);
+      const centerY = (y) => padding + ((depth - y - 1) * cell) + (cell / 2);
+      const cellLeft = (x) => padding + (x * cell);
+      const cellTop = (y) => padding + ((depth - y - 1) * cell);
+
+      svg.appendChild(createSvg("rect", {
+        x: padding,
+        y: padding,
+        width: width * cell,
+        height: depth * cell,
+        rx: 18,
+        fill: "rgba(9, 20, 29, 0.84)",
+        stroke: "rgba(255, 255, 255, 0.12)",
+        "stroke-width": 1.5
+      }));
+
+      for (let x = 0; x <= width; x += 1) {
+        svg.appendChild(createSvg("line", {
+          x1: padding + x * cell,
+          y1: padding,
+          x2: padding + x * cell,
+          y2: padding + depth * cell,
+          stroke: "rgba(255, 255, 255, 0.08)",
+          "stroke-width": 1
+        }));
+      }
+
+      for (let y = 0; y <= depth; y += 1) {
+        svg.appendChild(createSvg("line", {
+          x1: padding,
+          y1: padding + y * cell,
+          x2: padding + width * cell,
+          y2: padding + y * cell,
+          stroke: "rgba(255, 255, 255, 0.08)",
+          "stroke-width": 1
+        }));
+      }
+
+      for (let x = 0; x < width; x += 1) {
+        svg.appendChild(createSvg("text", {
+          x: centerX(x),
+          y: viewHeight - 20,
+          "text-anchor": "middle",
+          fill: "rgba(255, 255, 255, 0.48)",
+          "font-size": 12,
+          "font-family": "monospace"
+        }, String(x)));
+      }
+
+      for (let y = 0; y < depth; y += 1) {
+        svg.appendChild(createSvg("text", {
+          x: 28,
+          y: centerY(y) + 4,
+          "text-anchor": "middle",
+          fill: "rgba(255, 255, 255, 0.48)",
+          "font-size": 12,
+          "font-family": "monospace"
+        }, String(y)));
+      }
+
+      svg.appendChild(createSvg("text", {
+        x: padding,
+        y: 28,
+        fill: "#dfeaf0",
+        "font-size": 14,
+        "font-family": "\"Avenir Next\", \"Trebuchet MS\", sans-serif"
+      }, currentTaskId() + " / floor " + state.selectedFloor));
+
+      for (let x = 0; x < width; x += 1) {
+        for (let y = 0; y < depth; y += 1) {
+          const hit = createSvg("rect", {
+            x: cellLeft(x),
+            y: cellTop(y),
+            width: cell,
+            height: cell,
+            fill: "transparent",
+            cursor: state.busy ? "wait" : "pointer"
+          });
+          hit.addEventListener("click", () => handleGridPointClick(x, y));
+          svg.appendChild(hit);
+        }
+      }
+
+      const elements = state.observation.placed_elements || [];
+
+      elements
+        .filter((element) => element.type !== "column" && elementVisibleOnFloor(element, state.selectedFloor))
+        .forEach((element) => {
+          const start = parseNodeId(element.node_i);
+          const end = parseNodeId(element.node_j);
+          if (!start || !end) {
+            return;
+          }
+
+          const ur = urForElement(element.id);
+          const selected = state.selectedElementId === element.id;
+          const stroke = selected ? "#68c3b3" : urColor(ur);
+          const widthValue = element.type === "wall" ? Math.max(12, cell * 0.3) : Math.max(6, cell * 0.16);
+
+          if (selected) {
+            svg.appendChild(createSvg("line", {
+              x1: centerX(start.x),
+              y1: centerY(start.y),
+              x2: centerX(end.x),
+              y2: centerY(end.y),
+              stroke: "rgba(104, 195, 179, 0.18)",
+              "stroke-width": widthValue + 8,
+              "stroke-linecap": "round"
+            }));
+          }
+
+          const line = createSvg("line", {
+            x1: centerX(start.x),
+            y1: centerY(start.y),
+            x2: centerX(end.x),
+            y2: centerY(end.y),
+            stroke: stroke,
+            "stroke-width": widthValue,
+            "stroke-linecap": "round",
+            opacity: 0.96,
+            cursor: "pointer"
+          });
+          line.addEventListener("click", (event) => {
+            event.stopPropagation();
+            if (state.mode === "inspect") {
+              selectElement(element.id);
             }
-            setLoading(false);
-        }
-        
-        async function sendAction(actionData) {
-            if (!sessionId) return;
-            setLoading(true);
-            try {
-                const res = await fetch('/step', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        session_id: sessionId,
-                        message: JSON.stringify(actionData)
-                    })
-                });
-                const data = await res.json();
-                currentState = data.observation;
-                
-                if(data.done) {
-                    alert(`Episode complete! Reward: ${data.reward}`);
-                }
-                
-                renderUI();
-            } catch (err) {
-                console.error(err);
-            }
-            setLoading(false);
-        }
-        
-        async function finishEpisode() {
-            if (!sessionId) return;
-            await sendAction({action_type: 'done'});
-        }
+          });
+          svg.appendChild(line);
+        });
 
-        function getColorForUR(ur) {
-            if (ur === 0 || !ur) return '#6b7280'; // gray (unassembled/no load)
-            if (ur > 1.0) return '#ef4444'; // red (fail)
-            if (ur > 0.8) return '#f59e0b'; // orange (high)
-            return '#34d399'; // green (safe)
-        }
-        
-        function renderUI() {
-            if (!currentState) return;
-            
-            // 1. Update Physics Stats
-            const isUnconverged = currentState.message && currentState.message.includes("Not converged");
-            const isValid = currentState.is_structurally_valid;
-            
-            const badge = document.getElementById('status-badge');
-            if (isUnconverged) {
-                badge.className = 'status-badge status-unconverged';
-                badge.innerText = 'Not converged (Structurally incomplete)';
-            } else if (isValid) {
-                badge.className = 'status-badge status-valid';
-                badge.innerText = 'Safe & Valid';
+      elements
+        .filter((element) => element.type === "column" && elementVisibleOnFloor(element, state.selectedFloor))
+        .forEach((element) => {
+          const node = parseNodeId(element.node_i);
+          if (!node) {
+            return;
+          }
+
+          const ur = urForElement(element.id);
+          const selected = state.selectedElementId === element.id;
+          const circle = createSvg("circle", {
+            cx: centerX(node.x),
+            cy: centerY(node.y),
+            r: Math.max(8, cell * 0.2),
+            fill: selected ? "#68c3b3" : urColor(ur),
+            stroke: selected ? "#dff9f4" : "#f6ede1",
+            "stroke-width": selected ? 2.5 : 1.2,
+            cursor: "pointer"
+          });
+
+          circle.addEventListener("click", (event) => {
+            event.stopPropagation();
+            if (state.mode === "inspect") {
+              selectElement(element.id);
             } else {
-                badge.className = 'status-badge status-invalid';
-                badge.innerText = 'Code Violations Detected';
+              handleGridPointClick(node.x, node.y);
             }
-            
-            document.getElementById('stat-mass').innerText = currentState.total_steel_mass_kg.toFixed(0) + ' kg';
-            document.getElementById('stat-carbon').innerText = currentState.carbon_kg.toFixed(0) + ' kg';
-            document.getElementById('stat-drift').innerText = (currentState.max_lateral_drift_ratio * 100).toFixed(3) + '%';
-            document.getElementById('stat-deflection').innerText = currentState.max_deflection_mm.toFixed(1) + ' mm';
-            document.getElementById('env-message').innerText = currentState.message || "Ready";
-            
-            // Render Hotspots Tab
-            const tbody = document.getElementById('hotspot-tbody');
-            tbody.innerHTML = '';
-            // We'll fake critical elements if state.critical_members is not robustly structured, 
-            // or we'll filter top URs from placed_elements
-            let elements = currentState.placed_elements || [];
-            elements = elements.filter(e => e.utilization_ratio > 0)
-                               .sort((a,b) => b.utilization_ratio - a.utilization_ratio)
-                               .slice(0, 5);
-                               
-            if (elements.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-dim)">No active load data</td></tr>';
-            } else {
-                elements.forEach(e => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${e.element_id}</td>
-                        <td><span style="color: ${getColorForUR(e.ur_bending)}">${e.ur_bending ? e.ur_bending.toFixed(2) : '-'}</span></td>
-                        <td><span style="color: ${getColorForUR(e.ur_shear)}">${e.ur_shear ? e.ur_shear.toFixed(2) : '-'}</span></td>
-                        <td><span style="color: ${getColorForUR(e.utilization_ratio)}">${e.utilization_ratio.toFixed(2)}</span></td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
-            
-            // 2. Render SVG Grid
-            renderGrid();
-        }
+          });
+          svg.appendChild(circle);
+        });
 
-        function renderGrid() {
-            svg.innerHTML = '';
-            if (!currentState) return;
-            
-            const w = currentState.grid_width;
-            const d = currentState.grid_depth;
-            
-            // Grid logic: x=column (0 to w), y=row (0 to d)
-            // Flip Y so that y=0 is at the bottom visually
-            
-            const svgW = w * cellSpacing + 80;
-            const svgH = d * cellSpacing + 80;
-            // Add viewBox to make it responsive
-            svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
-            
-            const offsetX = 40;
-            const offsetY = 40;
-            
-            const getX = (gx) => offsetX + gx * cellSpacing;
-            const getY = (gy) => offsetY + (d - gy) * cellSpacing;
-            
-            // Draw background grid
-            for(let x=0; x<=w; x++) {
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', getX(x));
-                line.setAttribute('y1', getY(0));
-                line.setAttribute('x2', getX(x));
-                line.setAttribute('y2', getY(d));
-                line.setAttribute('stroke', 'rgba(255,255,255,0.05)');
-                line.setAttribute('stroke-width', '1');
-                svg.appendChild(line);
-            }
-            for(let y=0; y<=d; y++) {
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', getX(0));
-                line.setAttribute('y1', getY(y));
-                line.setAttribute('x2', getX(w));
-                line.setAttribute('y2', getY(y));
-                line.setAttribute('stroke', 'rgba(255,255,255,0.05)');
-                line.setAttribute('stroke-width', '1');
-                svg.appendChild(line);
-            }
-            
-            // Clickable areas (invisible rects centered on nodes and spanning edges)
-            for(let x=0; x<=w; x++) {
-                for(let y=0; y<=d; y++) {
-                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-                    rect.setAttribute('x', getX(x) - cellSpacing/2);
-                    rect.setAttribute('y', getY(y) - cellSpacing/2);
-                    rect.setAttribute('width', cellSpacing);
-                    rect.setAttribute('height', cellSpacing);
-                    rect.setAttribute('fill', 'transparent');
-                    rect.style.cursor = 'pointer';
-                    
-                    const handleHover = (e) => {
-                        tooltip.style.display = 'block';
-                        tooltip.style.left = e.pageX + 15 + 'px';
-                        tooltip.style.top = e.pageY + 15 + 'px';
-                        tooltip.innerHTML = `Grid(${x}, ${y})`;
-                        rect.setAttribute('fill', 'rgba(255,255,255,0.05)');
-                    };
-                    const handleOut = () => {
-                        tooltip.style.display = 'none';
-                        rect.setAttribute('fill', 'transparent');
-                    };
-                    
-                    rect.addEventListener('mousemove', handleHover);
-                    rect.addEventListener('mouseleave', handleOut);
-                    rect.addEventListener('click', () => handleGridClick(x, y));
-                    
-                    svg.appendChild(rect);
-                }
-            }
+      if (state.pendingPoint) {
+        svg.appendChild(createSvg("circle", {
+          cx: centerX(state.pendingPoint.x),
+          cy: centerY(state.pendingPoint.y),
+          r: Math.max(12, cell * 0.28),
+          fill: "transparent",
+          stroke: "#f6ede1",
+          "stroke-width": 2.5,
+          "stroke-dasharray": "6 4"
+        }));
+      }
+    }
 
-            // Draw placed structural elements
-            const elements = currentState.placed_elements || [];
-            
-            // Draw Beams first so they are behind columns
-            elements.filter(e => e.type === 'Beam').forEach(b => {
-                const parts = b.element_id.split('_'); 
-                // e.g. beam_0_0_5_0_0
-                if(parts.length >= 6) {
-                    const x1 = parseInt(parts[1]);
-                    const y1 = parseInt(parts[2]);
-                    const x2 = parseInt(parts[3]);
-                    const y2 = parseInt(parts[4]);
-                    // Only draw ground floor beams for demo
-                    const floor = parseInt(parts[5]);
-                    if(floor !== 0) return;
-                    
-                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                    line.setAttribute('x1', getX(x1));
-                    line.setAttribute('y1', getY(y1));
-                    line.setAttribute('x2', getX(x2));
-                    line.setAttribute('y2', getY(y2));
-                    line.setAttribute('stroke', getColorForUR(b.utilization_ratio));
-                    line.setAttribute('stroke-width', '6');
-                    line.setAttribute('stroke-linecap', 'round');
-                    
-                    line.addEventListener('mousemove', (e) => {
-                        tooltip.style.display = 'block';
-                        tooltip.style.left = e.pageX + 15 + 'px';
-                        tooltip.style.top = e.pageY + 15 + 'px';
-                        tooltip.innerHTML = `${b.element_id}<br/>UR: ${b.utilization_ratio.toFixed(2)}`;
-                    });
-                    line.addEventListener('mouseleave', () => tooltip.style.display = 'none');
-                    line.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if(currentMode === 'remove') {
-                            sendAction({action_type: 'remove_element', element_id: b.element_id});
-                        }
-                    });
-                    
-                    svg.appendChild(line);
-                }
-            });
+    function handleGridPointClick(x, y) {
+      if (state.busy) {
+        return;
+      }
 
-            // Draw Columns
-            elements.filter(e => e.type === 'Column').forEach(c => {
-                const parts = c.element_id.split('_');
-                // col_x_y_f
-                if(parts.length >= 4) {
-                    const x = parseInt(parts[1]);
-                    const y = parseInt(parts[2]);
-                    const floor = parseInt(parts[3]);
-                    if(floor !== 0) return; // Only 2D ground view
-                    
-                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                    circle.setAttribute('cx', getX(x));
-                    circle.setAttribute('cy', getY(y));
-                    circle.setAttribute('r', '8');
-                    circle.setAttribute('fill', getColorForUR(c.utilization_ratio));
-                    circle.setAttribute('stroke', 'rgba(255,255,255,0.8)');
-                    circle.setAttribute('stroke-width', '2');
-                    
-                    circle.addEventListener('mousemove', (e) => {
-                        tooltip.style.display = 'block';
-                        tooltip.style.left = e.pageX + 15 + 'px';
-                        tooltip.style.top = e.pageY + 15 + 'px';
-                        tooltip.innerHTML = `${c.element_id} [${c.section}]<br/>UR: ${c.utilization_ratio.toFixed(2)}`;
-                    });
-                    circle.addEventListener('mouseleave', () => tooltip.style.display = 'none');
-                    circle.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        if(currentMode === 'remove') {
-                            sendAction({action_type: 'remove_element', element_id: c.element_id});
-                        }
-                    });
-                    
-                    svg.appendChild(circle);
-                }
-            });
+      if (!state.observation) {
+        setNotice("Start a new episode first.", "warn");
+        renderAll();
+        return;
+      }
+
+      if (state.episodeDone) {
+        setNotice("This episode is finished. Start a new one to continue editing.", "warn");
+        renderAll();
+        return;
+      }
+
+      if (state.mode === "inspect") {
+        state.selectedElementId = null;
+        state.selectedElementForces = null;
+        state.selectedElementImpact = null;
+        setNotice("Inspect mode is active. Click a rendered member to inspect it.", "info");
+        renderAll();
+        return;
+      }
+
+      if (state.mode === "column") {
+        sendAction({
+          action_type: "place_column",
+          grid_x: x,
+          grid_y: y,
+          floor: state.selectedFloor,
+          section: $("columnSection").value
+        }, "Placing column");
+        return;
+      }
+
+      if (!columnExistsAt(x, y, state.selectedFloor)) {
+        setNotice("Beam and wall endpoints must already have columns on this floor.", "warn");
+        renderAll();
+        return;
+      }
+
+      if (!state.pendingPoint) {
+        state.pendingPoint = { x: x, y: y };
+        setNotice(
+          "Start point locked at (" + x + ", " + y + "). Choose an axis-aligned end point.",
+          "info"
+        );
+        renderAll();
+        return;
+      }
+
+      if (state.pendingPoint.x === x && state.pendingPoint.y === y) {
+        state.pendingPoint = null;
+        setNotice(modeHint(), "info");
+        renderAll();
+        return;
+      }
+
+      if (state.pendingPoint.x !== x && state.pendingPoint.y !== y) {
+        setNotice("Only axis-aligned members are supported here. Choose a point sharing x or y.", "warn");
+        renderAll();
+        return;
+      }
+
+      const action = state.mode === "beam"
+        ? {
+            action_type: "place_beam",
+            from_node_x: state.pendingPoint.x,
+            from_node_y: state.pendingPoint.y,
+            to_node_x: x,
+            to_node_y: y,
+            floor: state.selectedFloor,
+            section: $("beamSection").value,
+            orientation: state.pendingPoint.y === y ? "x" : "y"
+          }
+        : {
+            action_type: "add_wall",
+            from_node_x: state.pendingPoint.x,
+            from_node_y: state.pendingPoint.y,
+            to_node_x: x,
+            to_node_y: y,
+            floor: state.selectedFloor,
+            thickness_m: Number($("wallThickness").value),
+            orientation: state.pendingPoint.y === y ? "x" : "y"
+          };
+
+      sendAction(action, state.mode === "beam" ? "Placing beam" : "Adding wall");
+    }
+
+    function renderMetrics() {
+      const observation = state.observation;
+
+      if (!observation) {
+        $("statusBadge").className = "status-pill idle";
+        $("statusBadge").textContent = state.busy ? state.busyLabel : "Idle";
+        $("metricValidity").textContent = "-";
+        $("metricUR").textContent = "-";
+        $("metricDrift").textContent = "-";
+        $("metricDeflection").textContent = "-";
+        $("metricMass").textContent = "-";
+        $("metricCarbon").textContent = "-";
+        $("metricFrameType").textContent = "-";
+        $("metricReward").textContent = "-";
+        $("metricScore").textContent = "-";
+        $("summaryMessage").textContent = "Episode-level feedback will appear here after the first action.";
+        return;
+      }
+
+      const validity = observation.is_structurally_valid ? "Valid" : (observation.n_elements_placed ? "Invalid" : "Awaiting frame");
+      const maxUr = observation.critical_members && observation.critical_members.length
+        ? observation.critical_members[0].max_UR
+        : null;
+      const score = state.lastInfo && typeof state.lastInfo.graded_score === "number"
+        ? state.lastInfo.graded_score
+        : null;
+
+      $("statusBadge").className = "status-pill " + statusTone(observation);
+      $("statusBadge").textContent = state.busy ? state.busyLabel : solverLabel();
+      $("metricValidity").textContent = validity;
+      $("metricUR").textContent = maxUr === null ? "-" : formatNumber(maxUr, 3);
+      $("metricUR").className = "metric-value " + urToneClass(maxUr);
+      $("metricDrift").textContent = observation.n_elements_placed
+        ? formatNumber(observation.max_lateral_drift_ratio, 3)
+        : "-";
+      $("metricDeflection").textContent = observation.n_elements_placed
+        ? formatNumber(observation.max_deflection_mm, 2) + " mm"
+        : "-";
+      $("metricMass").textContent = observation.n_elements_placed
+        ? Math.round(observation.total_steel_mass_kg).toLocaleString() + " kg"
+        : "-";
+      $("metricCarbon").textContent = observation.n_elements_placed
+        ? Math.round(observation.carbon_kg).toLocaleString() + " kg"
+        : "-";
+      $("metricFrameType").textContent = observation.is_braced_frame ? "Braced" : "Unbraced";
+      $("metricReward").textContent = typeof state.lastReward === "number" ? formatNumber(state.lastReward, 4) : "-";
+      $("metricScore").textContent = typeof score === "number" ? formatNumber(score, 4) : "-";
+      $("summaryMessage").textContent = summaryCopy(observation);
+    }
+
+    function renderEpisodeMeta() {
+      const wrapper = $("episodeMeta");
+      const observation = state.observation;
+      const rows = [
+        { label: "Task", value: observation ? observation.task_id : currentTaskId() },
+        { label: "Episode ID", value: observation ? observation.episode_id : "-" },
+        { label: "Session ID", value: state.sessionId ? "<code>" + escapeHtml(state.sessionId) + "</code>" : "-" },
+        { label: "Steps", value: observation ? (observation.step_count + " / " + observation.max_steps) : "-" },
+        { label: "Elements", value: observation ? String(observation.n_elements_placed) : "-" },
+        { label: "Last action", value: observation ? observation.last_action_result : "-" },
+        { label: "Error", value: observation && observation.last_action_error ? observation.last_action_error : "None" },
+        { label: "Done", value: state.episodeDone ? "Yes" : "No" }
+      ];
+
+      if (state.lastInfo && typeof state.lastInfo.graded_score === "number") {
+        rows.push({ label: "Final score", value: formatNumber(state.lastInfo.graded_score, 4) });
+      }
+
+      wrapper.innerHTML = rows.map((row) => (
+        "<div class=\"meta-row\"><span>" + escapeHtml(row.label) + "</span><strong>" + row.value + "</strong></div>"
+      )).join("");
+    }
+
+    function renderSelectedElement() {
+      const wrapper = $("selectedElementCard");
+      const element = getSelectedElement();
+
+      if (!element) {
+        wrapper.innerHTML = "<div class=\"empty-copy\">Click a rendered member in Inspect mode to inspect forces and run edits.</div>";
+        $("forcesBox").textContent = "No member selected.";
+        $("impactBox").textContent = "Counterfactual impact will appear here.";
+        return;
+      }
+
+      const critical = criticalMemberById(element.id);
+      const floor = elementDisplayFloor(element);
+      wrapper.innerHTML =
+        "<strong>" + escapeHtml(element.id) + "</strong>" +
+        "<div class=\"selected-grid\">" +
+          selectedField("Type", element.type) +
+          selectedField("Section", element.section || "wall") +
+          selectedField("Floor", String(floor)) +
+          selectedField("Length", formatNumber(element.length_m, 2) + " m") +
+          selectedField("Max UR", critical ? formatNumber(critical.max_UR, 3) : "n/a") +
+          selectedField("Orientation", element.orientation || "-") +
+        "</div>";
+
+      $("forcesBox").textContent = forceSummary();
+      $("impactBox").textContent = impactSummary();
+    }
+
+    function renderCriticalMembers() {
+      const wrapper = $("criticalMembersList");
+      const observation = state.observation;
+
+      if (!observation || !observation.critical_members || !observation.critical_members.length) {
+        wrapper.innerHTML = "<div class=\"empty-copy\">Critical members appear after the solver has a connected frame to analyze.</div>";
+        return;
+      }
+
+      wrapper.innerHTML = observation.critical_members.slice(0, 8).map((member) => (
+        "<button type=\"button\" class=\"member-row " + (state.selectedElementId === member.id ? "is-selected" : "") + "\" data-member-id=\"" + escapeHtml(member.id) + "\">" +
+          "<span class=\"member-copy\">" +
+            "<span class=\"member-title\">" + escapeHtml(member.id) + "</span>" +
+            "<span class=\"member-subtitle\">" +
+              escapeHtml(member.type) + " | " + escapeHtml(member.section) + " | L=" + escapeHtml(formatNumber(member.length_m, 2)) + " m" +
+            "</span>" +
+          "</span>" +
+          "<span class=\"member-ur " + urToneClass(member.max_UR) + "\">" + escapeHtml(formatNumber(member.max_UR, 3)) + "</span>" +
+        "</button>"
+      )).join("");
+
+      wrapper.querySelectorAll("[data-member-id]").forEach((button) => {
+        button.addEventListener("click", () => {
+          if (!state.busy) {
+            selectElement(button.getAttribute("data-member-id"));
+          }
+        });
+      });
+    }
+
+    function renderServerMessage() {
+      $("serverMessage").textContent = state.observation
+        ? state.observation.message
+        : "Reset the environment to see the backend summary.";
+    }
+
+    function refreshControlStates() {
+      const hasEpisode = Boolean(state.observation && state.sessionId);
+      const selectedElement = getSelectedElement();
+      const selectedIsWall = Boolean(selectedElement && selectedElement.type === "wall");
+
+      $("taskSelect").disabled = state.busy;
+      $("columnSection").disabled = state.busy || !hasEpisode || state.episodeDone;
+      $("beamSection").disabled = state.busy || !hasEpisode || state.episodeDone;
+      $("wallThickness").disabled = state.busy || !hasEpisode || state.episodeDone;
+      $("doneButton").disabled = state.busy || !hasEpisode || state.episodeDone;
+      $("clearSelectionButton").disabled = state.busy || (!selectedElement && !state.pendingPoint);
+      $("upgradeButton").disabled = state.busy || !selectedElement || selectedIsWall || state.episodeDone;
+      $("downgradeButton").disabled = state.busy || !selectedElement || selectedIsWall || state.episodeDone;
+      $("removeButton").disabled = state.busy || !selectedElement || state.episodeDone;
+      $("whatIfButton").disabled = state.busy || !selectedElement;
+      document.querySelectorAll("[data-start-episode]").forEach((button) => {
+        button.disabled = state.busy;
+      });
+    }
+
+    function createSvg(tag, attrs, text) {
+      const element = document.createElementNS(SVG_NS, tag);
+      Object.entries(attrs || {}).forEach(([key, value]) => {
+        element.setAttribute(key, String(value));
+      });
+      if (text !== undefined) {
+        element.textContent = text;
+      }
+      return element;
+    }
+
+    function getSelectedElement() {
+      return state.observation && state.selectedElementId
+        ? (state.observation.placed_elements || []).find((element) => element.id === state.selectedElementId) || null
+        : null;
+    }
+
+    function criticalMemberById(elementId) {
+      return state.observation
+        ? (state.observation.critical_members || []).find((member) => member.id === elementId) || null
+        : null;
+    }
+
+    function urForElement(elementId) {
+      const member = criticalMemberById(elementId);
+      return member ? member.max_UR : null;
+    }
+
+    function columnExistsAt(x, y, floor) {
+      return Boolean(state.observation && (state.observation.placed_elements || []).some((element) => {
+        if (element.type !== "column") {
+          return false;
         }
-        
-        function handleGridClick(x, y) {
-            if(currentMode === 'place_column') {
-                const sec = document.getElementById('col-section-select').value;
-                sendAction({
-                    action_type: 'place_column',
-                    grid_x: x, grid_y: y, floor: 0, section: sec
-                });
-            } else if(currentMode === 'place_beam_x') {
-                const sec = document.getElementById('beam-section-select').value;
-                sendAction({
-                    action_type: 'place_beam',
-                    from_node_x: x, from_node_y: y,
-                    to_node_x: x+1, to_node_y: y,
-                    floor: 0, section: sec, orientation: 'x'
-                });
-            } else if(currentMode === 'place_beam_y') {
-                const sec = document.getElementById('beam-section-select').value;
-                sendAction({
-                    action_type: 'place_beam',
-                    from_node_x: x, from_node_y: y,
-                    to_node_x: x, to_node_y: y+1,
-                    floor: 0, section: sec, orientation: 'y'
-                });
-            }
+        const node = parseNodeId(element.node_i);
+        return Boolean(node && node.x === x && node.y === y && node.floor === floor);
+      }));
+    }
+
+    function parseNodeId(nodeId) {
+      const match = /^n_(\d+)_(\d+)_(\d+)$/.exec(nodeId || "");
+      if (!match) {
+        return null;
+      }
+      return {
+        x: Number(match[1]),
+        y: Number(match[2]),
+        floor: Number(match[3])
+      };
+    }
+
+    function elementVisibleOnFloor(element, floor) {
+      const node = parseNodeId(element.node_i);
+      if (!node) {
+        return false;
+      }
+      if (element.type === "column") {
+        return node.floor === floor;
+      }
+      return node.floor === floor + 1;
+    }
+
+    function elementDisplayFloor(element) {
+      const node = parseNodeId(element.node_i);
+      if (!node) {
+        return 0;
+      }
+      return element.type === "column" ? node.floor : Math.max(0, node.floor - 1);
+    }
+
+    function solverLabel() {
+      if (!state.observation) {
+        return "Idle";
+      }
+      if (state.episodeDone && state.lastInfo && typeof state.lastInfo.graded_score === "number") {
+        return "Graded";
+      }
+      if (!state.observation.n_elements_placed) {
+        return "Awaiting frame";
+      }
+      if (!state.observation.critical_members.length) {
+        return "Disconnected";
+      }
+      return state.observation.is_structurally_valid ? "Valid" : "Invalid";
+    }
+
+    function statusTone(observation) {
+      if (!observation || !observation.n_elements_placed) {
+        return "idle";
+      }
+      if (observation.is_structurally_valid) {
+        return "good";
+      }
+      if (observation.critical_members.length) {
+        return "danger";
+      }
+      return "warn";
+    }
+
+    function difficultyTone(difficulty) {
+      const value = String(difficulty || "").toLowerCase();
+      if (value === "easy") {
+        return "easy";
+      }
+      if (value === "hard") {
+        return "hard";
+      }
+      return "medium";
+    }
+
+    function urColor(ur) {
+      if (typeof ur !== "number") {
+        return "#d6dbe1";
+      }
+      if (ur < 0.6) {
+        return "#74c77b";
+      }
+      if (ur < 1.0) {
+        return "#f2c462";
+      }
+      return "#ef6b5b";
+    }
+
+    function urToneClass(ur) {
+      if (typeof ur !== "number") {
+        return "";
+      }
+      if (ur < 0.6) {
+        return "ur-good";
+      }
+      if (ur < 1.0) {
+        return "ur-warn";
+      }
+      return "ur-danger";
+    }
+
+    function summaryCopy(observation) {
+      if (!observation) {
+        return "Episode-level feedback will appear here after the first action.";
+      }
+
+      if (observation.last_action_result === "INVALID" && observation.last_action_error) {
+        return "Invalid action: " + observation.last_action_error;
+      }
+
+      if (state.episodeDone && state.lastInfo && typeof state.lastInfo.graded_score === "number") {
+        return "Episode complete. Final score " + formatNumber(state.lastInfo.graded_score, 4) +
+          ". Structural validity: " + (observation.is_structurally_valid ? "pass" : "fail") + ".";
+      }
+
+      if (!observation.n_elements_placed) {
+        return "No members placed yet. Use Place Column mode to seed the frame.";
+      }
+
+      if (!observation.critical_members.length) {
+        return "The frame has members, but the solver has not produced full member checks yet. Add connectivity and supports.";
+      }
+
+      return (
+        (observation.is_structurally_valid ? "Current frame passes the available checks." : "Current frame has " + observation.n_code_violations + " code violation(s).") +
+        " Max UR " + formatNumber(observation.critical_members[0].max_UR, 3) +
+        ", drift " + formatNumber(observation.max_lateral_drift_ratio, 3) +
+        ", mass " + Math.round(observation.total_steel_mass_kg).toLocaleString() + " kg."
+      );
+    }
+
+    function forceSummary() {
+      const element = getSelectedElement();
+      if (!element) {
+        return "No member selected.";
+      }
+      if (!state.selectedElementForces) {
+        return "Loading member forces...";
+      }
+      if (state.selectedElementForces.error) {
+        return "Member forces unavailable: " + state.selectedElementForces.error;
+      }
+
+      const forces = state.selectedElementForces.forces || {};
+      return [
+        "Element: " + element.id,
+        "Section: " + (state.selectedElementForces.section || element.section || "wall"),
+        "Length: " + formatNumber(state.selectedElementForces.length_m, 2) + " m",
+        "N: " + formatNumber(forces.N_kN, 3) + " kN",
+        "V: " + formatNumber(forces.V_kN, 3) + " kN",
+        "Mmax: " + formatNumber(forces.M_max_kNm, 3) + " kNm",
+        "Delta: " + formatNumber(forces.delta_max_mm, 3) + " mm"
+      ].join("\n");
+    }
+
+    function impactSummary() {
+      const impact = state.selectedElementImpact;
+      if (!impact) {
+        return "Counterfactual impact will appear here.";
+      }
+      if (impact.error) {
+        return "What-if failed: " + impact.error;
+      }
+      return [
+        "Verdict: " + impact.verdict,
+        "Current max UR: " + safeFormat(impact.current_max_UR, 4),
+        "Without member: " + safeFormat(impact.counterfactual_max_UR, 4),
+        "Delta UR: " + safeFormat(impact.delta_UR, 4)
+      ].join(" | ");
+    }
+
+    function actionSummary(action) {
+      if (!action || !action.action_type) {
+        return modeHint();
+      }
+      if (action.action_type === "place_column") {
+        return "Column placed at (" + action.grid_x + ", " + action.grid_y + ") on floor " + action.floor + ".";
+      }
+      if (action.action_type === "place_beam") {
+        return "Beam placed between (" + action.from_node_x + ", " + action.from_node_y + ") and (" + action.to_node_x + ", " + action.to_node_y + ").";
+      }
+      if (action.action_type === "add_wall") {
+        return "Wall placed between (" + action.from_node_x + ", " + action.from_node_y + ") and (" + action.to_node_x + ", " + action.to_node_y + ").";
+      }
+      if (action.action_type === "remove_element") {
+        return "Removed " + action.element_id + ".";
+      }
+      if (action.action_type === "upgrade_section") {
+        return "Upgraded " + action.element_id + ".";
+      }
+      if (action.action_type === "downgrade_section") {
+        return "Downgraded " + action.element_id + ".";
+      }
+      if (action.action_type === "done") {
+        return "Final grading requested.";
+      }
+      return modeHint();
+    }
+
+    function modeHint() {
+      if (state.mode === "column") {
+        return "Place Column mode: click any valid grid point on the current floor.";
+      }
+      if (state.mode === "beam") {
+        return state.pendingPoint
+          ? "Beam mode: choose the second endpoint on the same x or y line."
+          : "Beam mode: click two existing columns on the current floor.";
+      }
+      if (state.mode === "wall") {
+        return state.pendingPoint
+          ? "Wall mode: choose the second endpoint on the same x or y line."
+          : "Wall mode: click two existing columns to add a shear wall.";
+      }
+      return "Inspect mode: click rendered members to view forces, upgrade sections, remove them, or run what-if analysis.";
+    }
+
+    function selectedField(label, value) {
+      return (
+        "<div class=\"selected-field\">" +
+          "<span>" + escapeHtml(label) + "</span>" +
+          "<strong>" + escapeHtml(value) + "</strong>" +
+        "</div>"
+      );
+    }
+
+    async function api(url, options) {
+      const request = Object.assign(
+        {
+          headers: { "Content-Type": "application/json" }
+        },
+        options || {}
+      );
+
+      if (!request.body) {
+        delete request.headers["Content-Type"];
+      }
+
+      const response = await fetch(url, request);
+      const text = await response.text();
+      let payload = null;
+
+      if (text) {
+        try {
+          payload = JSON.parse(text);
+        } catch (error) {
+          payload = text;
         }
-        
-        // Initial load
-        resetEnvironment();
-    </script>
+      }
+
+      if (!response.ok) {
+        if (payload && typeof payload === "object" && payload.detail) {
+          throw new Error(typeof payload.detail === "string" ? payload.detail : JSON.stringify(payload.detail));
+        }
+        throw new Error(typeof payload === "string" ? payload : ("Request failed with status " + response.status));
+      }
+
+      return payload;
+    }
+
+    function formatNumber(value, digits) {
+      return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "-";
+    }
+
+    function safeFormat(value, digits) {
+      return typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "n/a";
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+  </script>
 </body>
 </html>
