@@ -1,3 +1,12 @@
+---
+title: StructuralDesignEnv
+emoji: 🏗️
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+---
+
 # StructuralDesignEnv
 
 > **OpenEnv Hackathon Round 1 Submission**
