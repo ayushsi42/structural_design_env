@@ -92,6 +92,18 @@ class StepResponse(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+@app.get("/")
+def root():
+    return {
+        "env": "StructuralDesignEnv",
+        "version": "1.0.0",
+        "status": "ok",
+        "docs": "/docs",
+        "endpoints": ["/health", "/tasks", "/reset", "/step", "/state", "/action_schema",
+                      "/query_forces", "/what_if_remove", "/render"],
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "env": "StructuralDesignEnv", "version": "1.0.0"}
