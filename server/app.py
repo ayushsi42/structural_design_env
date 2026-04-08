@@ -16,6 +16,7 @@ Endpoints:
 from __future__ import annotations
 
 import uuid
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -60,6 +61,8 @@ app = FastAPI(
     version="1.0.0",
 )
 
+DEMO_HTML_PATH = Path(__file__).with_name("interactive_demo.html")
+
 # ---------------------------------------------------------------------------
 # Request / response models
 # ---------------------------------------------------------------------------
@@ -92,91 +95,18 @@ class StepResponse(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+def _load_demo_html() -> str:
+    return DEMO_HTML_PATH.read_text(encoding="utf-8")
+
+
 @app.get("/", response_class=HTMLResponse)
 def root():
-    return """<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>StructuralDesignEnv</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0f1117; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 2rem; }
-    h1 { font-size: 2rem; color: #fff; margin-bottom: 0.25rem; }
-    .badge { display: inline-block; background: #1e88e5; color: #fff; border-radius: 4px;
-             font-size: 0.75rem; padding: 2px 8px; margin-left: 8px; vertical-align: middle; }
-    .subtitle { color: #90a4ae; margin-bottom: 2rem; font-size: 1rem; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
-    .card { background: #1a1f2e; border: 1px solid #2a2f3e; border-radius: 8px; padding: 1.25rem; }
-    .card h3 { color: #64b5f6; margin-bottom: 0.5rem; font-size: 1rem; }
-    .card p { color: #90a4ae; font-size: 0.85rem; line-height: 1.5; }
-    .tag { display: inline-block; border-radius: 3px; font-size: 0.7rem; padding: 1px 6px;
-           margin-right: 4px; font-weight: bold; }
-    .easy   { background: #1b5e20; color: #a5d6a7; }
-    .medium { background: #e65100; color: #ffccbc; }
-    .hard   { background: #b71c1c; color: #ffcdd2; }
-    .endpoints { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 2rem; }
-    .ep { background: #1a1f2e; border: 1px solid #2a2f3e; border-radius: 6px; padding: 0.6rem 0.9rem; }
-    .ep a { color: #80cbc4; text-decoration: none; font-family: monospace; font-size: 0.85rem; }
-    .ep a:hover { color: #fff; }
-    .ep .desc { color: #546e7a; font-size: 0.72rem; margin-top: 2px; }
-    .btn { display: inline-block; background: #1e88e5; color: #fff; border-radius: 6px;
-           padding: 0.6rem 1.4rem; text-decoration: none; font-size: 0.9rem; margin-right: 0.5rem; }
-    .btn:hover { background: #1565c0; }
-    .btn.secondary { background: #263238; }
-    .btn.secondary:hover { background: #37474f; }
-    footer { color: #455a64; font-size: 0.8rem; margin-top: 2rem; border-top: 1px solid #1e2533; padding-top: 1rem; }
-  </style>
-</head>
-<body>
-  <h1>StructuralDesignEnv <span class="badge">v1.0.0</span></h1>
-  <p class="subtitle">OpenEnv · Steel Frame Structural Engineering · Eurocode 3 · Direct Stiffness Method</p>
+    return _load_demo_html()
 
-  <div style="margin-bottom:1.5rem">
-    <a class="btn" href="/docs">Interactive API Docs</a>
-    <a class="btn secondary" href="/tasks">View Tasks</a>
-    <a class="btn secondary" href="/health">Health Check</a>
-  </div>
 
-  <h2 style="color:#b0bec5;font-size:1rem;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px">Tasks</h2>
-  <div class="grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:2rem">
-    <div class="card">
-      <h3><span class="tag easy">EASY</span> task1_warehouse</h3>
-      <p>Single-story 20×10m warehouse. Gravity loads only. Score: validity + material efficiency.</p>
-      <p style="margin-top:0.5rem;color:#607d8b;font-size:0.78rem">max_steps: 25 &nbsp;|&nbsp; 1 floor &nbsp;|&nbsp; no lateral</p>
-    </div>
-    <div class="card">
-      <h3><span class="tag medium">MEDIUM</span> task2_office</h3>
-      <p>3-story 20×20m office with wind + light seismic. Score: drift + efficiency + torsional balance.</p>
-      <p style="margin-top:0.5rem;color:#607d8b;font-size:0.78rem">max_steps: 55 &nbsp;|&nbsp; 3 floors &nbsp;|&nbsp; wind + seismic</p>
-    </div>
-    <div class="card">
-      <h3><span class="tag hard">HARD</span> task3_hospital</h3>
-      <p>3-story hospital in seismic Zone 3. Score: seismic drift + budget + redundancy + utilization.</p>
-      <p style="margin-top:0.5rem;color:#607d8b;font-size:0.78rem">max_steps: 85 &nbsp;|&nbsp; 3 floors &nbsp;|&nbsp; ag=0.25g</p>
-    </div>
-  </div>
-
-  <h2 style="color:#b0bec5;font-size:1rem;margin-bottom:0.75rem;text-transform:uppercase;letter-spacing:1px">Endpoints</h2>
-  <div class="endpoints">
-    <div class="ep"><a href="/reset">POST /reset</a><div class="desc">Start new episode</div></div>
-    <div class="ep"><a href="/step">POST /step</a><div class="desc">Submit action, get observation</div></div>
-    <div class="ep"><a href="/state">GET /state</a><div class="desc">Session state</div></div>
-    <div class="ep"><a href="/tasks">GET /tasks</a><div class="desc">List all tasks</div></div>
-    <div class="ep"><a href="/action_schema">GET /action_schema</a><div class="desc">Action format reference</div></div>
-    <div class="ep"><a href="/query_forces">GET /query_forces</a><div class="desc">Member forces (N, V, M)</div></div>
-    <div class="ep"><a href="/what_if_remove">POST /what_if_remove</a><div class="desc">Counterfactual ΔUR</div></div>
-    <div class="ep"><a href="/render">GET /render</a><div class="desc">SVG frame plan view</div></div>
-    <div class="ep"><a href="/health">GET /health</a><div class="desc">Liveness check</div></div>
-  </div>
-
-  <footer>
-    StructuralDesignEnv · OpenEnv Hackathon Round 1 · Eurocode 3 (EN 1993-1-1) + EC8 (EN 1998-1) ·
-    Direct Stiffness Method · 3D 6-DOF solver
-  </footer>
-</body>
-</html>"""
+@app.get("/demo", response_class=HTMLResponse)
+def demo():
+    return _load_demo_html()
 
 
 @app.get("/health")
