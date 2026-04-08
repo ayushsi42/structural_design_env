@@ -17,7 +17,6 @@ build/
 hf_cache
 
 # Dev/local files
-uv.lock
 todo.md
 ps_hackathon.md
 env_docs.js
