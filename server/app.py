@@ -8,6 +8,9 @@ Endpoints:
   POST /step
   GET  /state?session_id=...
   GET  /action_schema
+  GET  /query_forces?session_id=...&element_id=...
+  POST /what_if_remove
+  GET  /render?session_id=...&floor=0
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ import uuid
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from structural_design_env.env import StructuralDesignEnv
@@ -246,6 +250,247 @@ def action_schema():
             "beams": ["IPE200", "IPE240", "IPE300", "IPE360", "IPE400", "IPE450", "IPE500"],
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Research endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/query_forces")
+def query_forces(session_id: str, element_id: str):
+    """Return solver forces (N, V, M_max, delta_max_mm) for a specific element."""
+    env = session_manager.get(session_id)
+    if env is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    sr = env._last_solver_result
+    if sr is None or not sr.converged:
+        raise HTTPException(status_code=400, detail="No converged solver result available")
+    forces = sr.member_forces.get(element_id)
+    if forces is None:
+        raise HTTPException(status_code=404, detail=f"Element '{element_id}' not found in solver result")
+    elem = env.graph.elements.get(element_id)
+    return {
+        "element_id": element_id,
+        "element_type": elem.element_type if elem else "unknown",
+        "section": elem.section if elem else "unknown",
+        "length_m": elem.length_m if elem else None,
+        "forces": {
+            "N_kN": round(forces.get("N", 0.0) / 1000.0, 3),
+            "V_kN": round(forces.get("V", 0.0) / 1000.0, 3),
+            "M_max_kNm": round(forces.get("M_max", 0.0) / 1000.0, 3),
+            "delta_max_mm": round(forces.get("delta_max_mm", 0.0), 3),
+        },
+    }
+
+
+class WhatIfRemoveRequest(BaseModel):
+    session_id: str
+    element_id: str
+
+
+@app.post("/what_if_remove")
+def what_if_remove(req: WhatIfRemoveRequest):
+    """
+    Re-solve the frame without the specified element and return the change in max UR.
+    Useful for identifying which members are critical to structural performance.
+    """
+    env = session_manager.get(req.session_id)
+    if env is None:
+        raise HTTPException(status_code=404, detail=f"Session '{req.session_id}' not found")
+    if req.element_id not in env.graph.elements:
+        raise HTTPException(status_code=404, detail=f"Element '{req.element_id}' not found")
+
+    # Current max UR
+    current_obs = env._current_obs
+    current_max_UR = max(
+        (m.max_UR for m in current_obs.critical_members), default=0.0
+    ) if current_obs else 0.0
+
+    # Clone graph, remove element, re-solve
+    graph_copy = env.graph.copy()
+    graph_copy.remove_element(req.element_id)
+
+    if len(graph_copy.elements) == 0:
+        return {
+            "element_id": req.element_id,
+            "current_max_UR": current_max_UR,
+            "counterfactual_max_UR": None,
+            "delta_UR": None,
+            "verdict": "structure_would_collapse",
+        }
+
+    try:
+        from structural_design_env.solver import generate_loads, StructuralSolver
+        from structural_design_env.solver.sections import COLUMN_SECTIONS, BEAM_SECTIONS
+        from structural_design_env.solver import check_member
+
+        loads = generate_loads(graph_copy, env.task_config)
+        sr = StructuralSolver().solve(graph_copy, loads)
+
+        if not sr.converged:
+            return {
+                "element_id": req.element_id,
+                "current_max_UR": current_max_UR,
+                "counterfactual_max_UR": None,
+                "delta_UR": None,
+                "verdict": "structure_would_collapse",
+            }
+
+        is_braced = any(e.element_type == "wall" for e in graph_copy.elements.values())
+        L_eff = 0.7 if is_braced else 1.5
+        tc = env.task_config
+
+        new_URs = []
+        for eid, elem in graph_copy.elements.items():
+            forces = sr.member_forces.get(eid, {"N": 0, "V": 0, "M_max": 0, "delta_max_mm": 0})
+            if elem.element_type == "wall":
+                chk = check_member("wall", {}, forces, elem.length_m,
+                                   floor_height_m=tc.floor_height_m,
+                                   thickness_m=elem.thickness_m or 0.2)
+            else:
+                props = COLUMN_SECTIONS.get(elem.section) or BEAM_SECTIONS.get(elem.section)
+                if props is None:
+                    continue
+                eff = L_eff if elem.element_type == "column" else 1.0
+                chk = check_member(elem.element_type, props, forces, elem.length_m, eff)
+            new_URs.append(chk.max_UR)
+
+        new_max_UR = max(new_URs, default=0.0)
+        delta = round(new_max_UR - current_max_UR, 4)
+
+        return {
+            "element_id": req.element_id,
+            "current_max_UR": round(current_max_UR, 4),
+            "counterfactual_max_UR": round(new_max_UR, 4),
+            "delta_UR": delta,
+            "verdict": (
+                "critical" if new_max_UR > 1.0 and current_max_UR <= 1.0
+                else "load_redistributes" if delta > 0.1
+                else "redundant"
+            ),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+def _ur_color(ur: float) -> str:
+    """Map utilization ratio to hex color."""
+    if ur < 0.0:
+        return "#9E9E9E"   # grey — not checked
+    if ur < 0.60:
+        return "#4CAF50"   # green — underutilized
+    if ur < 0.85:
+        return "#8BC34A"   # light green — good
+    if ur < 1.0:
+        return "#FFC107"   # amber — near limit
+    return "#F44336"       # red — violation
+
+
+@app.get("/render")
+def render_frame(session_id: str, floor: int = 0):
+    """
+    Return an SVG plan view of the structural frame at the given floor.
+    Columns are circles, beams are lines, walls are thick lines.
+    Color indicates utilization ratio: green < 0.6 < light-green < 0.85 < amber < 1.0 < red.
+    """
+    env = session_manager.get(session_id)
+    if env is None:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+
+    tc = env.task_config
+    graph = env.graph
+    current_obs = env._current_obs
+
+    # Build UR lookup from last observation
+    ur_map: Dict[str, float] = {}
+    if current_obs:
+        for cm in current_obs.critical_members:
+            ur_map[cm.id] = cm.max_UR
+
+    W = tc.site_width_m
+    D = tc.site_depth_m
+    SVG_SIZE = 520
+    MARGIN = 40
+    scale = (SVG_SIZE - 2 * MARGIN) / max(W, D)
+
+    def px(x_m: float) -> float:
+        return MARGIN + x_m * scale
+
+    def py(y_m: float) -> float:
+        return SVG_SIZE - MARGIN - y_m * scale  # flip Y
+
+    lines = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{SVG_SIZE}" height="{SVG_SIZE}" '
+        f'style="background:#1a1a2e;font-family:monospace">',
+        # Site boundary
+        f'<rect x="{px(0):.1f}" y="{py(D):.1f}" '
+        f'width="{W*scale:.1f}" height="{D*scale:.1f}" '
+        f'fill="none" stroke="#444" stroke-width="1"/>',
+        # Floor label
+        f'<text x="{MARGIN}" y="{MARGIN-8}" fill="#aaa" font-size="12">'
+        f'Floor {floor} | {tc.name} | step {env.step_count}</text>',
+    ]
+
+    # Grid dots (faint)
+    for xi in range(0, int(W) + 1, 5):
+        for yi in range(0, int(D) + 1, 5):
+            lines.append(
+                f'<circle cx="{px(xi):.1f}" cy="{py(yi):.1f}" r="1" fill="#333"/>'
+            )
+
+    # Elements at this floor
+    for eid, elem in graph.elements.items():
+        ur = ur_map.get(eid, -1.0)
+        color = _ur_color(ur)
+
+        if elem.element_type == "column":
+            # Columns span from floor → floor+1; node_i is at `floor` level
+            node = graph.nodes.get(elem.node_i)
+            if node is None or node.floor != floor:
+                continue
+            r = max(4.0, scale * 0.4)
+            lines.append(
+                f'<circle cx="{px(node.x_m):.1f}" cy="{py(node.y_m):.1f}" '
+                f'r="{r:.1f}" fill="{color}" stroke="#fff" stroke-width="0.5" '
+                f'opacity="0.9"><title>{eid} UR={ur:.3f}</title></circle>'
+            )
+
+        elif elem.element_type in ("beam", "wall"):
+            # Beams/walls connect nodes at floor+1 level
+            ni = graph.nodes.get(elem.node_i)
+            nj = graph.nodes.get(elem.node_j)
+            if ni is None or nj is None:
+                continue
+            if ni.floor != floor + 1:
+                continue
+            sw = 6.0 if elem.element_type == "wall" else 2.5
+            opacity = "0.95" if elem.element_type == "wall" else "0.85"
+            wall_color = "#9C27B0" if elem.element_type == "wall" else color
+            lines.append(
+                f'<line x1="{px(ni.x_m):.1f}" y1="{py(ni.y_m):.1f}" '
+                f'x2="{px(nj.x_m):.1f}" y2="{py(nj.y_m):.1f}" '
+                f'stroke="{wall_color}" stroke-width="{sw}" opacity="{opacity}">'
+                f'<title>{eid} UR={ur:.3f}</title></line>'
+            )
+
+    # Legend
+    legend_items = [
+        ("#4CAF50", "UR<0.60"),
+        ("#8BC34A", "0.60-0.85"),
+        ("#FFC107", "0.85-1.0"),
+        ("#F44336", "UR≥1.0"),
+        ("#9C27B0", "Wall"),
+    ]
+    lx = SVG_SIZE - 110
+    for i, (col, label) in enumerate(legend_items):
+        ly = MARGIN + i * 18
+        lines.append(
+            f'<rect x="{lx}" y="{ly}" width="12" height="12" fill="{col}"/>'
+            f'<text x="{lx+16}" y="{ly+10}" fill="#ccc" font-size="10">{label}</text>'
+        )
+
+    lines.append("</svg>")
+    return Response(content="\n".join(lines), media_type="image/svg+xml")
 
 
 def _task_description(tid: str) -> str:

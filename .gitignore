@@ -14,6 +14,7 @@ __pycache__/
 dist/
 build/
 .eggs/
+hf_cache
 
 # Dev/local files
 uv.lock

@@ -83,6 +83,16 @@ class StructuralObservation(BaseModel):
     total_steel_mass_kg: float
     material_efficiency_score: float
 
+    # --- Research additions ---
+    # CO2 from steel production (1.85 kg CO2 / kg steel, basic oxygen furnace)
+    carbon_kg: float = 0.0
+    # Whether frame has shear walls (braced = True → lower L_eff for columns)
+    is_braced_frame: bool = False
+    # Effective length factor used for column buckling this step
+    effective_length_factor: float = 1.0
+    # Top-5 most displaced nodes (for load-path awareness)
+    displacement_hotspots: List[dict] = Field(default_factory=list)
+
     # Episode state
     step_count: int
     max_steps: int

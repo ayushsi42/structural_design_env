@@ -58,6 +58,7 @@ class StructuralDesignEnv:
         self._last_action_result: str = "RESET"
         self._last_action_error: Optional[str] = None
         self._consecutive_invalid: int = 0
+        self._last_solver_result = None  # stored for /query_forces endpoint
 
     # ------------------------------------------------------------------
     # reset
@@ -276,24 +277,43 @@ class StructuralDesignEnv:
         if len(graph.elements) >= 1 and len(graph.nodes) >= 2:
             loads = generate_loads(graph, tc)
             solver_result = self._solver.solve(graph, loads)
+            self._last_solver_result = solver_result  # store for /query_forces
 
             if solver_result.converged:
-                # Run Eurocode 3 checks on each element
+                # Determine bracing: walls → braced frame → lower effective length
+                is_braced = any(
+                    e.element_type == "wall" for e in graph.elements.values()
+                )
+                # EC3 §6.3.1: k=0.7 braced (non-sway), k=1.5 unbraced (sway)
+                L_eff_factor = 0.7 if is_braced else 1.5
+
+                # Run code checks on all elements (steel + walls)
                 for eid, elem in graph.elements.items():
-                    if elem.element_type == "wall":
-                        continue
-                    props = COLUMN_SECTIONS.get(elem.section) or BEAM_SECTIONS.get(elem.section)
-                    if props is None:
-                        continue
                     forces = solver_result.member_forces.get(eid, {
                         "N": 0.0, "V": 0.0, "M_max": 0.0, "delta_max_mm": 0.0
                     })
-                    checks = check_member(
-                        element_type=elem.element_type,
-                        section_props=props,
-                        forces=forces,
-                        L_m=elem.length_m,
-                    )
+
+                    if elem.element_type == "wall":
+                        # RC shear wall check (EC2 simplified)
+                        checks = check_member(
+                            element_type="wall",
+                            section_props={},
+                            forces=forces,
+                            L_m=elem.length_m,
+                            floor_height_m=tc.floor_height_m,
+                            thickness_m=elem.thickness_m or 0.2,
+                        )
+                    else:
+                        props = COLUMN_SECTIONS.get(elem.section) or BEAM_SECTIONS.get(elem.section)
+                        if props is None:
+                            continue
+                        checks = check_member(
+                            element_type=elem.element_type,
+                            section_props=props,
+                            forces=forces,
+                            L_m=elem.length_m,
+                            L_eff_factor=L_eff_factor if elem.element_type == "column" else 1.0,
+                        )
                     member_checks[eid] = checks
 
                 # Lateral drift ratio: max story drift / story height
@@ -350,10 +370,27 @@ class StructuralDesignEnv:
             and (solver_result.converged if solver_result else False)
         )
 
-        # ---- Mass ----
+        # ---- Mass + carbon footprint ----
         total_mass_kg = graph.total_steel_mass_kg()
         ref_mass = max(tc.reference_mass_kg, 1.0)
         material_efficiency = max(0.0, 1.0 - abs(total_mass_kg - ref_mass) / ref_mass)
+        # Steel basic oxygen furnace: ~1.85 kg CO2 per kg steel
+        carbon_kg = round(total_mass_kg * 1.85, 1)
+
+        # ---- Displacement hotspots (top-5 most displaced nodes) ----
+        import math as _math
+        displacement_hotspots = []
+        if solver_result and solver_result.converged:
+            hotspots_raw = []
+            for nid, d in solver_result.node_displacements.items():
+                mag_mm = _math.sqrt(d["ux"] ** 2 + d["uy"] ** 2 + d["uz"] ** 2) * 1000.0
+                hotspots_raw.append({"node_id": nid, "displacement_mm": round(mag_mm, 3)})
+            hotspots_raw.sort(key=lambda x: -x["displacement_mm"])
+            displacement_hotspots = hotspots_raw[:5]
+
+        # ---- Braced frame / effective length factor ----
+        is_braced = any(e.element_type == "wall" for e in graph.elements.values())
+        eff_length_factor = 0.7 if is_braced else (1.5 if graph.elements else 1.0)
 
         # ---- Grid plan (all floors) ----
         grid_plan = []
@@ -387,6 +424,9 @@ class StructuralDesignEnv:
             n_code_violations=n_code_violations,
             is_valid=is_structurally_valid,
             total_mass_kg=total_mass_kg,
+            carbon_kg=carbon_kg,
+            is_braced=is_braced,
+            eff_length_factor=eff_length_factor,
             solver_converged=(solver_result.converged if solver_result else False),
             solver_error=(solver_result.error if solver_result else None),
         )
@@ -414,6 +454,10 @@ class StructuralDesignEnv:
             is_structurally_valid=is_structurally_valid,
             total_steel_mass_kg=round(total_mass_kg, 2),
             material_efficiency_score=round(material_efficiency, 4),
+            carbon_kg=carbon_kg,
+            is_braced_frame=is_braced,
+            effective_length_factor=eff_length_factor,
+            displacement_hotspots=displacement_hotspots,
             step_count=self.step_count,
             max_steps=tc.max_steps,
             last_action_error=self._last_action_error,
@@ -485,6 +529,9 @@ class StructuralDesignEnv:
         n_code_violations: int,
         is_valid: bool,
         total_mass_kg: float,
+        carbon_kg: float,
+        is_braced: bool,
+        eff_length_factor: float,
         solver_converged: bool,
         solver_error: Optional[str],
     ) -> str:
@@ -504,12 +551,15 @@ class StructuralDesignEnv:
             )
         else:
             status = "VALID" if is_valid else f"INVALID ({n_code_violations} violations)"
+            frame_type = f"BRACED (k={eff_length_factor})" if is_braced else f"UNBRACED/SWAY (k={eff_length_factor})"
             lines += [
                 f"Structural status: {status}",
+                f"Frame type: {frame_type}",
                 f"Max UR bending: {max_UR_bending:.3f}  |  Max UR buckling: {max_UR_buckling:.3f}",
                 f"Max deflection: {max_deflection_mm:.2f}mm (limit {tc.deflection_limit_mm:.1f}mm)",
                 f"Max lateral drift ratio: {lateral_drift_ratio:.3f} (limit 1.0)",
                 f"Total steel mass: {total_mass_kg:.0f} kg (reference {tc.reference_mass_kg:.0f} kg)",
+                f"Carbon footprint: {carbon_kg:.0f} kg CO2",
             ]
 
         if critical_members:
