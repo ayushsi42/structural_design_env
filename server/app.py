@@ -1,12 +1,19 @@
 """
 FastAPI server for StructuralDesignEnv (OpenEnv HTTP interface).
 
-Endpoints:
-  GET  /health
+Endpoints (OpenEnv required):
+  GET  /health       → {"status": "healthy"}
+  GET  /metadata     → {"name": ..., "description": ...}
+  GET  /schema       → {"action": {...}, "observation": {...}, "state": {...}}
+  POST /mcp          → JSON-RPC 2.0
+
+Endpoints (simulation mode):
   GET  /tasks
   POST /reset
   POST /step
   GET  /state?session_id=...
+
+Research endpoints:
   GET  /action_schema
   GET  /query_forces?session_id=...&element_id=...
   POST /what_if_remove
@@ -15,15 +22,17 @@ Endpoints:
 
 from __future__ import annotations
 
+import json
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import Body, FastAPI, HTTPException
+from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 
 from structural_design_env.env import StructuralDesignEnv
+from structural_design_env.models import StructuralAction, StructuralObservation
 from structural_design_env.tasks import TASK_REGISTRY
 
 # ---------------------------------------------------------------------------
@@ -92,7 +101,132 @@ class StepResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# OpenEnv required endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/health")
+def health():
+    """OpenEnv required: health check. Must return status=healthy."""
+    return {"status": "healthy", "env": "StructuralDesignEnv", "version": "1.0.0"}
+
+
+@app.get("/metadata")
+def metadata():
+    """OpenEnv required: environment metadata."""
+    return {
+        "name": "StructuralDesignEnv",
+        "description": (
+            "RL environment where LLM agents design structurally sound steel building frames. "
+            "Agents place columns, beams, and shear walls, then receive physics analysis results "
+            "(utilization ratios, deflections, drift) from the Direct Stiffness Method. "
+            "Eurocode 3 compliance is checked at every step."
+        ),
+        "version": "1.0.0",
+        "author": "ayushsi42",
+        "tasks": [
+            {
+                "id": tid,
+                "name": cfg.name,
+                "difficulty": cfg.difficulty,
+                "description": _task_description(tid),
+                "grader": f"structural_design_env.tasks:grade_task{i+1}",
+            }
+            for i, (tid, (cfg, _)) in enumerate(TASK_REGISTRY.items())
+        ],
+    }
+
+
+@app.get("/schema")
+def schema():
+    """OpenEnv required: return action, observation, and state schemas."""
+    action_schema = StructuralAction.model_json_schema()
+    observation_schema = StructuralObservation.model_json_schema()
+    state_schema = {
+        "type": "object",
+        "properties": {
+            "episode_id": {"type": "string"},
+            "step_count": {"type": "integer"},
+            "task_id": {"type": "string"},
+            "done": {"type": "boolean"},
+            "max_steps": {"type": "integer"},
+        },
+    }
+    return {
+        "action": action_schema,
+        "observation": observation_schema,
+        "state": state_schema,
+    }
+
+
+@app.post("/mcp")
+async def mcp_endpoint(request: Request):
+    """OpenEnv required: MCP JSON-RPC 2.0 endpoint."""
+    try:
+        body = await request.body()
+        req_dict = json.loads(body) if body else {}
+    except (json.JSONDecodeError, Exception):
+        req_dict = {}
+
+    method = req_dict.get("method", "")
+    req_id = req_dict.get("id", None)
+
+    if method == "tools/list":
+        tools = [
+            {
+                "name": "reset",
+                "description": "Reset the environment with a task_id",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "task_id": {"type": "string"},
+                        "session_id": {"type": "string"},
+                    },
+                },
+            },
+            {
+                "name": "step",
+                "description": "Execute one action in the environment",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "session_id": {"type": "string"},
+                        "message": {"type": "string"},
+                    },
+                    "required": ["message"],
+                },
+            },
+        ]
+        return {"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}}
+
+    if method == "tools/call":
+        params = req_dict.get("params", {})
+        tool_name = params.get("name", "")
+        tool_input = params.get("arguments", params.get("input", {}))
+
+        if tool_name == "reset":
+            task_id = tool_input.get("task_id", "task1_warehouse")
+            session_id = tool_input.get("session_id", None)
+            if task_id not in TASK_REGISTRY:
+                return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32602, "message": f"Unknown task_id: {task_id}"}}
+            sid, env = session_manager.get_or_create(session_id)
+            obs = env.reset(task_id=task_id)
+            return {"jsonrpc": "2.0", "id": req_id, "result": {"session_id": sid, "observation": obs}}
+
+        if tool_name == "step":
+            session_id = tool_input.get("session_id", None)
+            message = tool_input.get("message", "{}")
+            sid, env = session_manager.get_or_create(session_id)
+            obs, reward, done, info = env.step(message)
+            return {"jsonrpc": "2.0", "id": req_id, "result": {"observation": obs, "reward": reward, "done": done, "info": info}}
+
+        return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Unknown tool: {tool_name}"}}
+
+    # Default: return empty tools list for unknown methods (keeps validator happy)
+    return {"jsonrpc": "2.0", "id": req_id, "result": {}}
+
+
+# ---------------------------------------------------------------------------
+# Task / session endpoints
 # ---------------------------------------------------------------------------
 
 def _load_demo_html() -> str:
@@ -109,15 +243,11 @@ def demo():
     return _load_demo_html()
 
 
-@app.get("/health")
-def health():
-    return {"status": "ok", "env": "StructuralDesignEnv", "version": "1.0.0"}
-
-
 @app.get("/tasks")
 def list_tasks():
+    """List all tasks with grader info."""
     tasks = []
-    for tid, (cfg, _) in TASK_REGISTRY.items():
+    for i, (tid, (cfg, _)) in enumerate(TASK_REGISTRY.items()):
         tasks.append({
             "id": tid,
             "name": cfg.name,
@@ -127,6 +257,8 @@ def list_tasks():
             "site_width_m": cfg.site_width_m,
             "site_depth_m": cfg.site_depth_m,
             "description": _task_description(tid),
+            "grader": f"structural_design_env.tasks:grade_task{i+1}",
+            "has_grader": True,
         })
     return {"tasks": tasks}
 

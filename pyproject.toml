@@ -52,7 +52,7 @@ Repository = "https://github.com/ayushsi42/structural_design_env"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["structural_design_env*"]
+include = ["structural_design_env*", "server*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
