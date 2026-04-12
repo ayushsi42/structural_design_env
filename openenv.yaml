@@ -18,16 +18,19 @@ tasks:
     difficulty: easy
     max_steps: 25
     description: Single-story 20×10m warehouse. No lateral loads. Score by validity + material efficiency.
+    grader: structural_design_env.tasks:grade_task1
   - id: task2_office
     name: "Multi-Story Office"
     difficulty: medium
     max_steps: 55
     description: 3-story 20×20m office with wind and light seismic. Score by drift control + efficiency + torsional balance.
+    grader: structural_design_env.tasks:grade_task2
   - id: task3_hospital
     name: "Seismic Hospital"
     difficulty: hard
     max_steps: 85
     description: 3-story hospital in seismic Zone 3. Score by seismic drift + budget + redundancy + utilization.
+    grader: structural_design_env.tasks:grade_task3
 app: server.app:app
 port: 7860
 requirements: pyproject.toml
