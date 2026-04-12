@@ -76,15 +76,27 @@ DEMO_HTML_PATH = Path(__file__).with_name("interactive_demo.html")
 # Request / response models
 # ---------------------------------------------------------------------------
 
+class StepRequest(BaseModel):
+    session_id: Optional[str] = None
+    # Accept EITHER our string format OR the standard OpenEnv dict format
+    message: Optional[str] = None          # JSON-encoded StructuralAction (our format)
+    action: Optional[Dict[str, Any]] = None  # OpenEnv standard dict format
+
+    def get_message(self) -> str:
+        """Return the action as a JSON string regardless of which field was used."""
+        if self.message:
+            return self.message
+        if self.action:
+            return json.dumps(self.action)
+        return '{"action_type": "done"}'
+
+
 class ResetRequest(BaseModel):
     task_id: str = "task1_warehouse"
     session_id: Optional[str] = None
     seed: Optional[int] = None
-
-
-class StepRequest(BaseModel):
-    session_id: Optional[str] = None
-    message: str  # JSON-encoded StructuralAction
+    # OpenEnv standard fields (ignored but accepted)
+    episode_id: Optional[str] = None
 
 
 class ResetResponse(BaseModel):
@@ -97,6 +109,7 @@ class StepResponse(BaseModel):
     observation: dict
     reward: float
     done: bool
+    score: Optional[float] = None   # graded score at top level when done=True
     info: dict
 
 
@@ -279,14 +292,63 @@ def reset_env(body: Dict[str, Any] | None = Body(default=None)):
 @app.post("/step", response_model=StepResponse)
 def step_env(req: StepRequest):
     sid, env = session_manager.get_or_create(req.session_id)
-    obs, reward, done, info = env.step(req.message)
+    message = req.get_message()   # handles both "message": "..." and "action": {...}
+    obs, reward, done, info = env.step(message)
+    graded_score = info.get("graded_score") if done else None
     return StepResponse(
         session_id=sid,
         observation=obs,
         reward=round(reward, 6),
         done=done,
+        score=graded_score,       # top-level score when episode ends
         info=info,
     )
+
+
+class GradeRequest(BaseModel):
+    task_id: str
+    session_id: Optional[str] = None  # if provided, grades the current session state
+
+
+@app.post("/grade")
+def grade_task(req: GradeRequest):
+    """
+    Explicitly run the grader for a task.
+    If session_id is provided, grades the current state of that session.
+    Otherwise runs a fresh reset and immediately grades (empty structure baseline).
+    Returns score in [0.0, 1.0].
+    """
+    if req.task_id not in TASK_REGISTRY:
+        raise HTTPException(status_code=400, detail=f"Unknown task_id '{req.task_id}'")
+
+    cfg, grader_fn = TASK_REGISTRY[req.task_id]
+
+    if req.session_id:
+        env = session_manager.get(req.session_id)
+        if env is None:
+            raise HTTPException(status_code=404, detail=f"Session '{req.session_id}' not found")
+        obs = env._current_obs
+        if obs is None:
+            # Session exists but hasn't stepped yet — build observation
+            obs_dict = env.reset(task_id=req.task_id)
+            obs = env._current_obs
+    else:
+        # Fresh environment
+        _, env = session_manager.create()
+        env.reset(task_id=req.task_id)
+        obs = env._current_obs
+
+    try:
+        score = float(grader_fn(obs))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Grader error: {exc}")
+
+    return {
+        "task_id": req.task_id,
+        "score": score,
+        "grader": f"structural_design_env.tasks:grade_{req.task_id}",
+        "is_structurally_valid": getattr(obs, "is_structurally_valid", False),
+    }
 
 
 @app.get("/state")

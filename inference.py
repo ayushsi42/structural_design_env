@@ -254,10 +254,17 @@ def run_episode(task_id: str) -> float:
 # --------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    task = sys.argv[1] if len(sys.argv) > 1 else TASK_ID
-    valid_tasks = {"task1_warehouse", "task2_office", "task3_hospital"}
-    if task not in valid_tasks:
-        print(f"[DEBUG] Unknown task '{task}'. Valid: {sorted(valid_tasks)}", flush=True)
-        sys.exit(1)
+    valid_tasks = ["task1_warehouse", "task2_office", "task3_hospital"]
 
-    run_episode(task)
+    if len(sys.argv) > 1:
+        # Single task specified on command line
+        task = sys.argv[1]
+        if task not in valid_tasks:
+            print(f"[DEBUG] Unknown task '{task}'. Valid: {valid_tasks}", flush=True)
+            sys.exit(1)
+        run_episode(task)
+    else:
+        # No argument: run all 3 tasks so the platform sees graders for each
+        tasks_to_run = valid_tasks if TASK_ID == "task1_warehouse" else [TASK_ID]
+        for task in tasks_to_run:
+            run_episode(task)
