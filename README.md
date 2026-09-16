@@ -3,7 +3,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
-[![Tests](https://img.shields.io/badge/tests-96%2F96%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-98%2F98%20passing-brightgreen.svg)](tests/)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#current-status)
 
 ## Overview
@@ -17,7 +17,7 @@ StructuralDesignEnv is an [OpenEnv](https://pypi.org/project/openenv-core/) rein
 - **EN 1998-1 seismic loading** for the hospital task — Type 1 elastic response spectrum, soil class C, inverted-triangle floor force distribution, base shear from `ag`/importance factor (`solver/seismic.py`).
 - **Three tiered tasks with distinct grading rubrics** — warehouse (validity + efficiency), office (drift control + torsional balance + efficiency), hospital (validity + budget efficiency + redundancy + utilization), plus a progressive-collapse redundancy check (`solver/redundancy.py`).
 - **Full OpenEnv-compliant HTTP server** — FastAPI app (`server/app.py`) exposing `/health`, `/metadata`, `/schema`, `/mcp` (JSON-RPC), plus simulation endpoints (`/reset`, `/step`, `/grade`) and research tooling (`/query_forces`, `/what_if_remove`, `/render` for SVG floor-plan visualization).
-- **96/96 tests passing** across solver mechanics, Eurocode checks, task graders, full-episode integration, and server routes (see [Current Status](#current-status)).
+- **98/98 tests passing** across solver mechanics, Eurocode checks, task graders, full-episode integration, and server routes (see [Current Status](#current-status)).
 - **Docker-ready** for one-command deployment (e.g. to a Hugging Face Space) with a health-checked container image.
 
 ## How It Works
@@ -47,9 +47,10 @@ structural_design_env/
 ├── server/
 │   ├── app.py                    # Canonical FastAPI server (OpenEnv /metadata, /schema, /mcp + sim + research endpoints)
 │   └── interactive_demo.html     # Browser demo UI served at /demo
-├── server.py                     # Legacy/simplified standalone server (superseded by server/app.py)
-├── inference.py                  # Baseline LLM-agent runner (root — hackathon entry point)
-├── scripts/inference.py          # Alternate inference script (Anthropic/OpenAI env-var conventions)
+├── server.py                     # DEPRECATED shim — re-exports server/app.py's `app` (kept for `python server.py` back-compat)
+├── inference.py                  # Canonical LLM-agent runner (root — hackathon entry point, used for results/)
+├── scripts/inference.py          # DEPRECATED shim — maps legacy env vars and delegates to root inference.py
+├── results/                      # Checked-in LLM baseline run results (see gpt-4o-mini_baseline.json)
 ├── openenv.yaml                  # OpenEnv manifest (tasks, graders, runtime)
 ├── pyproject.toml                # Package metadata & dependencies
 ├── Dockerfile                    # Container image (port 7860, runs server.app:app)
@@ -75,7 +76,7 @@ structural_design_env/
     ├── test_stiffness.py         # Solver unit tests (31 tests)
     ├── test_eurocode.py          # Eurocode check unit tests (15 tests)
     ├── test_graders.py           # Grader determinism/range tests (14 tests)
-    ├── test_env.py               # Full-episode integration tests (32 tests)
+    ├── test_env.py               # Full-episode integration tests (34 tests)
     └── test_server_routes.py     # FastAPI route tests (4 tests)
 ```
 
@@ -153,13 +154,27 @@ curl http://localhost:7860/health
 
 ## Current Status
 
-Verified locally on 2026-09-16 (`pip install -e ".[dev]"` then `pytest tests/ -q`): **96/96 tests pass, 0 failures** — 31 solver-mechanics tests, 15 Eurocode-check tests, 14 grader tests, 32 full-episode integration tests, and 4 FastAPI route tests. The solver tests exercise real structural behavior (axial compression, cantilever and portal-frame bending, lateral sway, multi-bay grid frames) rather than only checking that the code runs, and the Eurocode tests confirm utilization ratios cross 1.0 exactly at the analytically expected capacity. One benign `MatrixRankWarning` is emitted (expected: a deliberately disconnected/unsupported test structure is exactly singular, which the solver correctly detects and reports as non-converged).
+Verified locally on 2026-09-16 (`pip install -e ".[dev]"` then `pytest tests/ -q`): **98/98 tests pass, 0 failures** — 31 solver-mechanics tests, 15 Eurocode-check tests, 14 grader tests, 34 full-episode integration tests, and 4 FastAPI route tests. (96 tests were previously reported; 2 regression tests were added alongside a real bug fix found by the baseline run below.) The solver tests exercise real structural behavior (axial compression, cantilever and portal-frame bending, lateral sway, multi-bay grid frames) rather than only checking that the code runs, and the Eurocode tests confirm utilization ratios cross 1.0 exactly at the analytically expected capacity. One benign `MatrixRankWarning` is emitted (expected: a deliberately disconnected/unsupported test structure is exactly singular, which the solver correctly detects and reports as non-converged). CI (`.github/workflows/ci.yml`) now runs this suite on every push/PR to `main` across Python 3.10 and 3.11.
 
-The repo carries **two server implementations**: `server/app.py` is the actively developed, OpenEnv-compliant one (used by the Dockerfile and the `server` console script); root-level `server.py` is an earlier, simpler version kept for reference and is not what ships in the container. Similarly, root `inference.py` (OpenAI-style env vars, hackathon entry point) and `scripts/inference.py` (Anthropic/OpenAI-agnostic env vars) overlap in purpose — root `inference.py` is the one referenced by the packaging metadata. The HF Space YAML front-matter and git history (`Add root / endpoint to fix HF Space 404`, `Add HTML landing page for HF Space App tab`) indicate this was deployed to a Hugging Face Space at some point during development; no HF remote is configured in this local checkout, so current live status of that Space was not verified as part of this pass. No end-to-end LLM-agent run with logged scores is checked into the repo yet — `inference.py` exists and runs episodes, but a recorded baseline result (which model, which task, what score) is not yet published.
+**Real gpt-4o-mini baseline** (2026-09-16, temperature 0, against a locally running `server/app.py`, single run per task, no retries — see [`results/gpt-4o-mini_baseline.json`](results/gpt-4o-mini_baseline.json) and raw `[START]/[STEP]/[END]` logs under [`results/logs/`](results/logs/)):
+
+| Task | Difficulty | Steps used / max | Termination | Structurally valid | Score |
+|------|-----------|-------------------|-------------|---------------------|-------|
+| `task1_warehouse` | Easy | 5 / 25 | explicit `done` | ✅ | **0.301** |
+| `task2_office` | Medium | 55 / 55 | max steps reached | ❌ | **0.142** |
+| `task3_hospital` | Hard | 85 / 85 | max steps reached | ❌ | **0.043** |
+
+Headline finding: gpt-4o-mini handles the easy single-story task reasonably (valid design, done in 5 steps) but degrades sharply once wind/seismic loads and multiple floors are involved — on both harder tasks it got stuck retrying the same rejected action (e.g. adding a wall that already exists, upgrading a section already at its maximum) instead of adapting to the returned error, burning its entire step budget without ever signaling `done`. This is a real, reproducible baseline, not a projected one — a solid starting point for the head-to-head model comparison in [ROADMAP.md](ROADMAP.md)'s Phase 2.
+
+Running this baseline surfaced and led to a fix for a real grading bug: `structural_design_env/env.py`'s step loop force-terminates an episode after 5 consecutive invalid actions (an anti-stuck heuristic), but that path previously returned `info` without a `graded_score` key, so `inference.py`'s `info.get("graded_score", 0.0)` silently reported `0.0` even when a real, nonzero grade existed. Both `task2_office` and `task3_hospital` above reached `done` via ordinary max-steps exhaustion rather than that path in the final run, but an earlier run did hit it — see `tests/test_env.py::TestForcedTerminationGrading` for the regression coverage now in place.
+
+Server and inference-script duplication has been resolved: `server/app.py` (used by the Dockerfile, the `server` console-script entry point, and all tests) and root `inference.py` (used to produce the results above) are the two canonical implementations. Root `server.py` and `scripts/inference.py` are now thin, clearly-commented deprecation shims that delegate to the canonical implementations rather than maintaining divergent logic — see [Project Structure](#project-structure) above.
+
+The HF Space YAML front-matter and git history (`Add root / endpoint to fix HF Space 404`, `Add HTML landing page for HF Space App tab`) indicate this was deployed to a Hugging Face Space at some point during development; no HF remote is configured in this local checkout, so current live status of that Space remains unverified from this repo alone (tracked as an open item in [ROADMAP.md](ROADMAP.md)).
 
 ## Roadmap
 
-Near-term priorities are proving the environment out with an actual LLM baseline run and tightening the project down to one canonical server/inference entry point; medium-term work extends the physics (more section types, P-delta effects) and grading depth; longer-term work aims at a public leaderboard across multiple LLMs. See [ROADMAP.md](ROADMAP.md) for the full plan.
+Phase 1 (CI, the real baseline run above, and consolidating the duplicate server/inference files) is complete. Remaining near-term work is verifying/documenting HF Space status and expanding `test_server_routes.py` coverage; medium-term work extends the physics (more section types, P-delta effects) and grading depth; longer-term work aims at a public leaderboard across multiple LLMs. See [ROADMAP.md](ROADMAP.md) for the full plan.
 
 ## Tech Stack
 

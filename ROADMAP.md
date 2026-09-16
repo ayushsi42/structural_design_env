@@ -2,22 +2,21 @@
 
 ## Current State
 
-- The physics core is solid: a 3D 6-DOF direct-stiffness solver plus EN 1993-1-1 (Eurocode 3) member checks and EN 1998-1 seismic loading, verified by 96/96 passing tests (`tests/test_stiffness.py`, `tests/test_eurocode.py`, `tests/test_graders.py`, `tests/test_env.py`, `tests/test_server_routes.py`) run and confirmed locally.
+- The physics core is solid: a 3D 6-DOF direct-stiffness solver plus EN 1993-1-1 (Eurocode 3) member checks and EN 1998-1 seismic loading, verified by 98/98 passing tests (`tests/test_stiffness.py`, `tests/test_eurocode.py`, `tests/test_graders.py`, `tests/test_env.py`, `tests/test_server_routes.py`) run and confirmed locally, and enforced on every push/PR by `.github/workflows/ci.yml`.
 - Three tasks (`task1_warehouse`, `task2_office`, `task3_hospital`) are fully wired end-to-end: reset → step → grade, each with its own scoring formula.
 - The FastAPI server (`server/app.py`) implements the full OpenEnv contract (`/metadata`, `/schema`, `/mcp`) plus useful research endpoints (`/query_forces`, `/what_if_remove`, `/render`).
-- Duplication exists that should be resolved rather than left as tech debt: `server.py` (root) vs. `server/app.py`, and `inference.py` (root) vs. `scripts/inference.py` — both pairs overlap in purpose with slightly different env-var conventions.
-- No LLM-agent baseline run with logged, reproducible scores is checked into the repo — `inference.py` runs episodes and prints `[START]/[STEP]/[END]` logs, but no result table exists yet.
-- There is no CI configured (no `.github/workflows/`), so `pytest` only runs when a human remembers to run it locally.
-- HF Space deployment history exists in git log (`Add root / endpoint to fix HF Space 404`, HF Space YAML front-matter in the README) but no HF remote is configured in this checkout, so current live status is unverified from this repo alone.
+- Server/inference duplication is resolved: `server/app.py` and root `inference.py` are canonical; root `server.py` and `scripts/inference.py` are now thin, commented deprecation shims that delegate to the canonical implementations.
+- A real `gpt-4o-mini` baseline is checked in at `results/gpt-4o-mini_baseline.json` (raw logs under `results/logs/`), covering all 3 tasks with real, reproducible scores (0.301 / 0.142 / 0.043 — see README's Current Status for the full table). This run surfaced and led to a fix for a real grading bug in `env.py` (forced termination on 5 consecutive invalid actions previously skipped `graded_score`), now covered by `tests/test_env.py::TestForcedTerminationGrading`.
+- HF Space deployment history exists in git log (`Add root / endpoint to fix HF Space 404`, HF Space YAML front-matter in the README) but no HF remote is configured in this checkout, so current live status is still unverified from this repo alone — this remains open (see Phase 1 below).
 
 ## Phase 1 — Near-term (weeks)
 
-- **Run and publish a real baseline**: execute `inference.py` against a real LLM (e.g. `gpt-4o-mini` or a local Ollama model) for all three tasks, capture the `[END] success=... steps=... score=...` lines, and commit a results table (model, task, score, steps, wall-clock) — turning the "environment exists" claim into a demonstrated one.
-- **Add GitHub Actions CI**: a workflow that runs `pip install -e ".[dev]"` and `pytest tests/ -q` on every push/PR, so the 96-test suite is enforced automatically rather than relying on manual runs.
-- **Consolidate the duplicate server/inference implementations**: pick `server/app.py` and root `inference.py` as canonical (they already are, per packaging metadata and the Dockerfile), and either delete or clearly deprecate `server.py` and `scripts/inference.py` to remove ambiguity for new contributors.
+**Done:** real logged baseline run across all 3 tasks (`results/gpt-4o-mini_baseline.json`), GitHub Actions CI (`.github/workflows/ci.yml`), and consolidation of the duplicate server/inference implementations into one canonical pair plus deprecation shims. See "Current State" above for details.
+
+Still open:
+
 - **Verify and document HF Space status**: either confirm the Space is live and link it from the README, or remove the stale HF-specific commentary if it's been decommissioned.
-- **Expand `test_server_routes.py` coverage**: it currently has only 4 tests versus 32 for `test_env.py`; add route-level tests for `/grade`, `/query_forces`, `/what_if_remove`, and `/render` (currently exercised only indirectly, if at all).
-- **Add a `/leaderboard`-style results artifact**: even a static `RESULTS.md` populated by the Phase 1 baseline runs, tracked per task/model.
+- **Expand `test_server_routes.py` coverage**: it currently has only 4 tests versus 34 for `test_env.py`; add route-level tests for `/grade`, `/query_forces`, `/what_if_remove`, and `/render` (currently exercised only indirectly, if at all).
 
 ## Phase 2 — Medium-term
 
@@ -36,6 +35,6 @@
 
 ## Success Metrics
 
-- **Phase 1** is done when: CI is green on every push, at least one LLM has a logged, reproducible score for all 3 tasks in a committed results file, and there is exactly one canonical server file and one canonical inference script referenced consistently across README/Dockerfile/pyproject.
+- **Phase 1** core deliverables are done: CI is green on every push, `gpt-4o-mini` has a logged, reproducible score for all 3 tasks in a committed results file, and there is exactly one canonical server file and one canonical inference script referenced consistently across README/Dockerfile/pyproject. Remaining Phase 1 loose ends (HF Space status, `test_server_routes.py` coverage) are listed above.
 - **Phase 2** is done when: P-delta effects are covered by new solver tests analogous to `test_stiffness.py`'s existing analytical checks, at least 2 additional section families are selectable by the agent, and a documented multi-model comparison table exists.
 - **Phase 3** is done when: solver output has been checked against at least one external/published reference case, a public leaderboard URL is live and linked from the README, and a written report/post is published and linked.
