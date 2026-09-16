@@ -1,0 +1,71 @@
+{
+  "model": "gpt-4o-mini",
+  "api_base_url": "https://api.openai.com/v1",
+  "harness": "inference.py (root, canonical hackathon entry point)",
+  "date": "2026-09-16",
+  "temperature": 0.0,
+  "max_tokens": 4096,
+  "notes": [
+    "First real, logged LLM-agent baseline run against the live server/app.py FastAPI server (not a hypothetical).",
+    "Each task was run once, single-shot, no retries, as its own process invocation: `python inference.py <task_id>`.",
+    "Raw [START]/[STEP]/[END] logs for each run are checked in under results/logs/.",
+    "Running this baseline surfaced a real grading bug in structural_design_env/env.py: forced episode termination after 5 consecutive invalid actions set done=True without computing info['graded_score'], so the client-observed score silently defaulted to 0.0 even when a real nonzero grade existed. Fixed in the same change that produced this baseline (see tests/test_env.py::TestForcedTerminationGrading); these results were captured after the fix."
+  ],
+  "results": [
+    {
+      "task_id": "task1_warehouse",
+      "difficulty": "easy",
+      "max_steps": 25,
+      "steps_used": 5,
+      "termination_reason": "explicit_done_action",
+      "graded_score": 0.301,
+      "is_structurally_valid": true,
+      "rewards": [0.12, 0.22, 0.16, 0.16, 0.36],
+      "wall_clock_seconds": 7,
+      "log_file": "results/logs/gpt-4o-mini_task1_warehouse.log"
+    },
+    {
+      "task_id": "task2_office",
+      "difficulty": "medium",
+      "max_steps": 55,
+      "steps_used": 55,
+      "termination_reason": "max_steps_reached",
+      "graded_score": 0.142,
+      "is_structurally_valid": false,
+      "rewards_summary": {
+        "count": 55,
+        "min": -1.00,
+        "max": -0.06,
+        "mean": -0.621
+      },
+      "wall_clock_seconds": 70,
+      "log_file": "results/logs/gpt-4o-mini_task2_office.log",
+      "observed_failure_mode": "Agent repeatedly retried the same invalid add_wall/upgrade_section actions (duplicate walls, sections already at HEB400 max) instead of adapting to the error message, burning most of its step budget without ever sending 'done'."
+    },
+    {
+      "task_id": "task3_hospital",
+      "difficulty": "hard",
+      "max_steps": 85,
+      "steps_used": 85,
+      "termination_reason": "max_steps_reached",
+      "graded_score": 0.043,
+      "is_structurally_valid": false,
+      "rewards_summary": {
+        "count": 85,
+        "min": -1.00,
+        "max": 0.11,
+        "mean": -0.266
+      },
+      "wall_clock_seconds": 111,
+      "log_file": "results/logs/gpt-4o-mini_task3_hospital.log",
+      "observed_failure_mode": "Same loop-on-invalid-action pattern as task2_office (repeated add_wall on existing walls, repeated upgrade_section past HEB400 max), never reaching 'done'."
+    }
+  ],
+  "summary": {
+    "tasks_run": 3,
+    "tasks_completed": 3,
+    "mean_score": 0.162,
+    "structurally_valid_count": 1,
+    "headline_finding": "gpt-4o-mini with a single-shot, no-retry-adaptation prompt solves the easy warehouse task reasonably (score 0.301, valid, 5 steps) but degrades sharply on the harder multi-floor tasks with lateral loads (office 0.142, hospital 0.043): in both harder tasks the agent got stuck repeating the same rejected action instead of trying a different one, consuming its entire step budget without ever signaling completion."
+  }
+}
