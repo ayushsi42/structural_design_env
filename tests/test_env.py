@@ -266,6 +266,48 @@ class TestDoneAction:
         assert reward == 0.0
 
 
+class TestForcedTerminationGrading:
+    """
+    Regression test for a bug found while running the real gpt-4o-mini
+    baseline (Phase 1): 5 consecutive invalid actions force-terminates the
+    episode (done=True) without the agent ever sending an explicit "done"
+    action, but info["graded_score"] was only populated on explicit-done or
+    max-steps paths — so `inference.py`'s `info.get("graded_score", 0.0)`
+    silently reported a score of 0.0 for episodes that were cut short by
+    the anti-stuck heuristic, even when a real (nonzero) grade existed.
+    """
+
+    def test_repeated_invalid_actions_still_grades(self):
+        env = StructuralDesignEnv()
+        env.reset(task_id="task1_warehouse")
+        # Place one valid column so the design isn't trivially empty.
+        env.step(json.dumps(
+            {"action_type": "place_column", "grid_x": 0, "grid_y": 0, "floor": 0, "section": "HEB200"}
+        ))
+        # 5 consecutive invalid actions (duplicate placement) forces done=True.
+        bad_action = json.dumps(
+            {"action_type": "place_column", "grid_x": 0, "grid_y": 0, "floor": 0, "section": "HEB200"}
+        )
+        obs = info = None
+        done = False
+        for _ in range(5):
+            obs, _, done, info = env.step(bad_action)
+        assert done is True
+        assert "graded_score" in info
+        assert "is_structurally_valid" in info
+        assert info["is_structurally_valid"] == obs["is_structurally_valid"]
+
+    def test_repeated_parse_errors_still_grades(self):
+        env = StructuralDesignEnv()
+        env.reset(task_id="task1_warehouse")
+        done = False
+        info = None
+        for _ in range(5):
+            _, _, done, info = env.step("not valid json")
+        assert done is True
+        assert "graded_score" in info
+
+
 class TestFullWarehouseEpisode:
     """A minimal but complete episode: place columns, beam, done."""
 

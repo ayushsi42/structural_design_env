@@ -126,9 +126,12 @@ class StructuralDesignEnv:
             self._current_obs = obs
             done = (self.step_count >= self.task_config.max_steps
                     or self._consecutive_invalid >= 5)
+            info: Dict[str, Any] = {"error": str(e)}
             if done:
                 self.done = True
-            return obs.model_dump(), -0.10, done, {"error": str(e)}
+                info["graded_score"] = self._grade()
+                info["is_structurally_valid"] = obs.is_structurally_valid
+            return obs.model_dump(), -0.10, done, info
 
         # done action
         if action.action_type == "done":
@@ -164,9 +167,12 @@ class StructuralDesignEnv:
             reward = compute_reward(prev, obs, action, self.task_config)
             done = (self.step_count >= self.task_config.max_steps
                     or self._consecutive_invalid >= 5)
+            info: Dict[str, Any] = {"validation_error": err_msg}
             if done:
                 self.done = True
-            return obs.model_dump(), float(reward), done, {"validation_error": err_msg}
+                info["graded_score"] = self._grade()
+                info["is_structurally_valid"] = obs.is_structurally_valid
+            return obs.model_dump(), float(reward), done, info
 
         # Apply action
         result_str = self._apply_action(action)
